@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle Financeiro & Contábil</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A2342',
+                        secondary: '#1E4072',
+                        success: '#2E7D32',
+                        danger: '#C62828',
+                        warning: '#F57C00',
+                        light: '#F5F7FA',
+                        dark: '#263238'
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif'],
+                        heading: ['Montserrat', 'sans-serif']
+                    },
+                },
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .sidebar-link {
+                @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-secondary/10 hover:translate-x-1;
+            }
+            .sidebar-link.active {
+                @apply bg-secondary/10 text-secondary font-medium border-l-4 border-secondary;
+            }
+            .stat-card {
+                @apply bg-white rounded-xl p-5 card-shadow hover:shadow-lg transition-shadow;
+            }
+            .table-cell {
+                @apply px-4 py-3 text-sm;
+            }
+            .input-field {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary/50;
+            }
+            .btn {
+                @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+            }
+            .btn-primary {
+                @apply bg-secondary text-white hover:bg-secondary/90;
+            }
+            .btn-success {
+                @apply bg-success text-white hover:bg-success/90;
+            }
+            .btn-danger {
+                @apply bg-danger text-white hover:bg-danger/90;
+            }
+            .btn-secondary-outline {
+                @apply border border-gray-300 text-gray-600 hover:bg-gray-50;
+            }
+            .btn-sm {
+                @apply px-2 py-1 text-xs;
+            }
+            .modal-overlay {
+                @apply fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4;
+            }
+            .modal-box {
+                @apply bg-white rounded-xl p-6 w-full max-w-md card-shadow max-h-[90vh] overflow-y-auto;
+            }
+            .toast {
+                @apply fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg text-white text-sm z-[60] flex items-center gap-2;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light font-sans text-dark min-h-screen flex">
+
+    <!-- Container de Notificações (toasts) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[60] flex flex-col gap-2"></div>
+
+    <!-- Barra Lateral -->
+    <aside class="w-64 bg-white card-shadow z-10 flex flex-col">
+        <div class="p-5 border-b border-gray-100">
+            <h1 class="font-heading font-bold text-xl text-primary">
+                <i class="fa fa-balance-scale mr-2"></i>FinanContábil
+            </h1>
+            <p class="text-xs text-gray-500 mt-1">Supabase + Git • v1.1</p>
+            <div id="status-conexao" class="mt-2 text-xs">
+                <span class="text-gray-400"><i class="fa fa-circle-o-notch fa-spin"></i> Conectando...</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-6 px-2">
+            <ul class="space-y-2">
+                <li><a href="#dashboard" class="sidebar-link active"><i class="fa fa-tachometer w-5 text-center"></i> Dashboard</a></li>
+                <li><a href="#clientes" class="sidebar-link"><i class="fa fa-users w-5 text-center"></i> Clientes</a></li>
+                <li><a href="#recebimentos" class="sidebar-link"><i class="fa fa-arrow-down w-5 text-center"></i> Recebimentos</a></li>
+                <li><a href="#pagamentos" class="sidebar-link"><i class="fa fa-arrow-up w-5 text-center"></i> Pagamentos</a></li>
+                <li><a href="#rotinas" class="sidebar-link"><i class="fa fa-calendar-check-o w-5 text-center"></i> Rotinas</a></li>
+                <li><a href="#configuracao" class="sidebar-link"><i class="fa fa-cog w-5 text-center"></i> Configuração</a></li>
+            </ul>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <p class="text-xs text-gray-500">Última atualização:</p>
+            <p class="font-medium text-dark text-sm" id="data-atual">--/--/----</p>
+        </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 overflow-y-auto p-6">
+        <!-- Dashboard -->
+        <section id="dashboard" class="mb-12">
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="font-heading font-bold text-[clamp(1.5rem,3vw,2rem)] text-primary">Painel de Controle</h2>
+                    <p class="text-gray-500">Dados sincronizados com Supabase</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btn-sincronizar" class="btn btn-primary flex items-center gap-2">
+                        <i class="fa fa-refresh"></i> Sincronizar
+                    </button>
+                </div>
+            </header>
+
+            <!-- Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm">Clientes Ativos</p>
+                            <h3 class="text-2xl font-bold mt-1" id="qtd-clientes">--</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            <i class="fa fa-building"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm">Recebido (Mês)</p>
+                            <h3 class="text-2xl font-bold mt-1 text-success" id="valor-recebido">--</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                            <i class="fa fa-money"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm">A Pagar</p>
+                            <h3 class="text-2xl font-bold mt-1 text-danger" id="valor-a-pagar">--</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
+                            <i class="fa fa-credit-card"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-500 text-sm">Saldo Atual</p>
+                            <h3 class="text-2xl font-bold mt-1 text-primary" id="saldo-atual">--</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                            <i class="fa fa-bank"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div class="lg:col-span-2 bg-white rounded-xl p-5 card-shadow">
+                    <h3 class="font-heading font-semibold text-lg mb-4">Receitas x Despesas</h3>
+                    <canvas id="grafico-principal" height="250"></canvas>
+                </div>
+                <div class="bg-white rounded-xl p-5 card-shadow">
+                    <h3 class="font-heading font-semibold text-lg mb-4">Status</h3>
+                    <canvas id="grafico-status" height="250"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Clientes -->
+        <section id="clientes" class="mb-12 hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="font-heading font-bold text-xl text-primary">Gestão de Clientes</h2>
+                <button id="btn-novo-cliente" class="btn btn-primary">
+                    <i class="fa fa-plus mr-1"></i> Novo Cliente
+                </button>
+            </div>
+            <div class="bg-white rounded-xl card-shadow overflow-hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="table-cell text-left font-semibold">Nome</th>
+                            <th class="table-cell text-left font-semibold">Serviço</th>
+                            <th class="table-cell text-left font-semibold">Valor Mensal</th>
+                            <th class="table-cell text-left font-semibold">Vencimento</th>
+                            <th class="table-cell text-left font-semibold">Status</th>
+                            <th class="table-cell text-left font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-clientes">
+                        <tr><td colspan="6" class="p-4 text-center text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Recebimentos -->
+        <section id="recebimentos" class="mb-12 hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="font-heading font-bold text-xl text-primary">Contas a Receber</h2>
+                <button id="btn-novo-recebimento" class="btn btn-success">
+                    <i class="fa fa-plus mr-1"></i> Lançar
+                </button>
+            </div>
+            <div class="bg-white rounded-xl card-shadow overflow-hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="table-cell text-left font-semibold">Data</th>
+                            <th class="table-cell text-left font-semibold">Cliente</th>
+                            <th class="table-cell text-left font-semibold">Descrição</th>
+                            <th class="table-cell text-left font-semibold">Valor</th>
+                            <th class="table-cell text-left font-semibold">Vencimento</th>
+                            <th class="table-cell text-left font-semibold">Status</th>
+                            <th class="table-cell text-left font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-recebimentos">
+                        <tr><td colspan="7" class="p-4 text-center text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Pagamentos -->
+        <section id="pagamentos" class="mb-12 hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="font-heading font-bold text-xl text-primary">Contas a Pagar</h2>
+                <button id="btn-novo-pagamento" class="btn btn-danger">
+                    <i class="fa fa-plus mr-1"></i> Lançar
+                </button>
+            </div>
+            <div class="bg-white rounded-xl card-shadow overflow-hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="table-cell text-left font-semibold">Data</th>
+                            <th class="table-cell text-left font-semibold">Fornecedor</th>
+                            <th class="table-cell text-left font-semibold">Descrição</th>
+                            <th class="table-cell text-left font-semibold">Valor</th>
+                            <th class="table-cell text-left font-semibold">Vencimento</th>
+                            <th class="table-cell text-left font-semibold">Status</th>
+                            <th class="table-cell text-left font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-pagamentos">
+                        <tr><td colspan="7" class="p-4 text-center text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Rotinas -->
+        <section id="rotinas" class="mb-12 hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="font-heading font-bold text-xl text-primary">Rotinas & Demandas</h2>
+                <button id="btn-nova-rotina" class="btn btn-primary">
+                    <i class="fa fa-plus mr-1"></i> Nova Tarefa
+                </button>
+            </div>
+            <div class="bg-white rounded-xl card-shadow overflow-hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="table-cell text-left font-semibold">Tarefa</th>
+                            <th class="table-cell text-left font-semibold">Alvo</th>
+                            <th class="table-cell text-left font-semibold">Prazo</th>
+                            <th class="table-cell text-left font-semibold">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-rotinas">
+                        <tr><td colspan="4" class="p-4 text-center text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Configuração -->
+        <section id="configuracao" class="hidden">
+            <h2 class="font-heading font-bold text-xl text-primary mb-5">Configuração de Conexão</h2>
+            <div class="bg-white rounded-xl p-6 card-shadow max-w-2xl">
+                <p class="text-gray-500 mb-4">Pegue esses dados no seu painel Supabase em <strong>Project Settings → API</strong> e cole exatamente aqui:</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">1. Cole aqui a URL do projeto (Project URL)</label>
+                        <input type="text" id="sb-url" class="input-field" placeholder="Ex: https://seu-projeto.supabase.co">
+                        <p class="text-xs text-gray-400 mt-1">Encontrada em: Project Settings → API → Project URL</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">2. Cole aqui a chave pública (anon / publishable key)</label>
+                        <input type="password" id="sb-key" class="input-field" placeholder="Ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                        <p class="text-xs text-gray-400 mt-1">Encontrada em: Project Settings → API → Project API keys → "anon public" (NÃO use a "service_role")</p>
+                    </div>
+                    <button id="btn-conectar" class="btn btn-primary w-full">
+                        <i class="fa fa-plug mr-1"></i> Conectar ao Supabase
+                    </button>
+                </div>
+
+                <div class="mt-6 p-4 bg-warning/10 border border-warning/30 rounded-lg text-sm text-dark">
+                    <h4 class="font-semibold mb-1"><i class="fa fa-shield mr-1"></i> Segurança</h4>
+                    <p>A chave <code>anon</code> do Supabase é pública por natureza (roda no navegador), mas isso só é seguro se você tiver <strong>Row Level Security (RLS)</strong> ativado e com políticas corretas nas tabelas <code>clientes</code>, <code>recebimentos</code> e <code>pagamentos</code>. Sem RLS, qualquer pessoa com essa chave lê e escreve todos os dados.</p>
+                </div>
+
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 class="font-semibold mb-2">🗄️ Schema SQL das Tabelas</h4>
+                    <pre class="text-xs bg-gray-100 p-3 rounded whitespace-pre-wrap overflow-x-auto">create table clientes (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  servico text,
+  valor_mensal numeric not null default 0,
+  dia_vencimento int not null default 1,
+  status text not null default 'ativo', -- ativo | a_vencer | inadimplente
+  criado_em timestamptz not null default now()
+);
+
+create table recebimentos (
+  id uuid primary key default gen_random_uuid(),
+  cliente_nome text not null,
+  descricao text,
+  valor numeric not null default 0,
+  data date,
+  vencimento date,
+  status text not null default 'pendente', -- pendente | recebido | vencido
+  criado_em timestamptz not null default now()
+);
+
+create table pagamentos (
+  id uuid primary key default gen_random_uuid(),
+  fornecedor text not null,
+  descricao text,
+  valor numeric not null default 0,
+  data date,
+  vencimento date,
+  status text not null default 'pendente', -- pendente | pago
+  criado_em timestamptz not null default now()
+);
+
+create table rotinas (
+  id uuid primary key default gen_random_uuid(),
+  tarefa text not null,
+  alvo text,
+  prazo date,
+  status text not null default 'pendente', -- pendente | concluida
+  criado_em timestamptz not null default now()
+);
+
+-- Ative RLS e crie policies adequadas antes de usar em produção:
+alter table clientes enable row level security;
+alter table recebimentos enable row level security;
+alter table pagamentos enable row level security;
+alter table rotinas enable row level security;</pre>
+                </div>
+
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 class="font-semibold mb-2">📋 Passo a Passo do Git</h4>
+                    <pre class="text-xs bg-gray-100 p-3 rounded whitespace-pre-wrap"># Inicializar repositório
+git init
+
+# Arquivo .gitignore
+echo "node_modules/" >> .gitignore
+echo ".env" >> .gitignore
+
+# Primeiro commit
+git add .
+git commit -m "Sistema Financeiro: versão inicial com Supabase"
+
+# Conectar ao GitHub
+git remote add origin https://github.com/seu-usuario/seu-repo.git
+git branch -M main
+git push -u origin main</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Script Principal -->
+    <script>
+        // ==============================================
+        // ESTADO GLOBAL
+        // ==============================================
+        let supabase = null;
+        let graficoPrincipal = null;
+        let graficoStatus = null;
+        let cacheClientes = [];
+
+        document.getElementById('data-atual').textContent = new Date().toLocaleDateString('pt-BR');
+
+        // ==============================================
+        // UTILITÁRIOS DE SEGURANÇA / UX
+        // ==============================================
+
+        // Escapa texto antes de injetar em innerHTML, prevenindo XSS armazenado
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+        }
+
+        function mostrarToast(mensagem, tipo = 'info') {
+            const cores = {
+                sucesso: 'bg-success',
+                erro: 'bg-danger',
+                aviso: 'bg-warning',
+                info: 'bg-secondary'
+            };
+            const icones = {
+                sucesso: 'fa-check-circle',
+                erro: 'fa-exclamation-circle',
+                aviso: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            const el = document.createElement('div');
+            el.className = `toast ${cores[tipo] || cores.info}`;
+            el.innerHTML = `<i class="fa ${icones[tipo] || icones.info}"></i><span>${escapeHTML(mensagem)}</span>`;
+            document.getElementById('toast-container').appendChild(el);
+            setTimeout(() => el.remove(), 4000);
+        }
+
+        function abrirModal(html) {
+            fecharModal();
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'modal-ativo';
+            overlay.innerHTML = `<div class="modal-box">${html}</div>`;
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) fecharModal(); });
+            document.body.appendChild(overlay);
+        }
+
+        function fecharModal() {
+            const existente = document.getElementById('modal-ativo');
+            if (existente) existente.remove();
+        }
+
+        // ==============================================
+        // CONFIGURAÇÃO SUPABASE
+        // ==============================================
+        const configSalva = localStorage.getItem('sb_config');
+        if (configSalva) {
+            try {
+                const { url, key } = JSON.parse(configSalva);
+                document.getElementById('sb-url').value = url || '';
+                document.getElementById('sb-key').value = key || '';
+                if (url && key) inicializarSupabase(url, key);
+            } catch (e) {
+                console.warn('Config salva inválida, ignorando.');
+            }
+        }
+
+        // Botão conectar (BUG CORRIGIDO: antes usava a URL/chave como se fossem IDs de elementos)
+        document.getElementById('btn-conectar').addEventListener('click', async () => {
+            const url = document.getElementById('sb-url').value.trim();
+            const key = document.getElementById('sb-key').value.trim();
+
+            if (!url || !key) {
+                mostrarToast('Preencha a URL e a Chave!', 'aviso');
+                return;
+            }
+
+            localStorage.setItem('sb_config', JSON.stringify({ url, key }));
+            await inicializarSupabase(url, key);
+        });
+
+        async function inicializarSupabase(url, key) {
+            try {
+                supabase = window.supabase.createClient(url, key);
+
+                // Testar conexão
+                const { error } = await supabase.from('clientes').select('id', { count: 'exact', head: true });
+
+                if (error) throw error;
+
+                document.getElementById('status-conexao').innerHTML =
+                    '<span class="text-success"><i class="fa fa-check-circle"></i> Conectado</span>';
+
+                mostrarToast('Conectado ao Supabase com sucesso!', 'sucesso');
+                carregarDados();
+            } catch (erro) {
+                console.error('Erro de conexão:', erro);
+                document.getElementById('status-conexao').innerHTML =
+                    '<span class="text-danger"><i class="fa fa-exclamation-circle"></i> Erro de conexão</span>';
+                mostrarToast('Erro ao conectar: ' + (erro.message || 'verifique URL e chave'), 'erro');
+            }
+        }
+
+        // ==============================================
+        // NAVEGAÇÃO
+        // ==============================================
+        const links = document.querySelectorAll('.sidebar-link');
+        const secoes = document.querySelectorAll('main section');
+
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                links.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+
+                secoes.forEach(s => s.classList.add('hidden'));
+                document.getElementById(link.getAttribute('href').substring(1)).classList.remove('hidden');
+            });
+        });
+
+        document.getElementById('btn-sincronizar').addEventListener('click', carregarDados);
+
+        // ==============================================
+        // CARREGAR DADOS
+        // ==============================================
+        async function carregarDados() {
+            if (!supabase) {
+                document.getElementById('status-conexao').innerHTML =
+                    '<span class="text-warning"><i class="fa fa-exclamation-triangle"></i> Configure a conexão</span>';
+                return;
+            }
+
+            try {
+                const [
+                    { data: clientes, error: erroClientes },
+                    { data: recebimentos, error: erroRecebimentos },
+                    { data: pagamentos, error: erroPagamentos },
+                    { data: rotinas, error: erroRotinas }
+                ] = await Promise.all([
+                    supabase.from('clientes').select('*').order('nome'),
+                    supabase.from('recebimentos').select('*').order('data', { ascending: false }),
+                    supabase.from('pagamentos').select('*').order('data', { ascending: false }),
+                    supabase.from('rotinas').select('*').order('prazo')
+                ]);
+
+                if (erroClientes) throw erroClientes;
+                if (erroRecebimentos) throw erroRecebimentos;
+                if (erroPagamentos) throw erroPagamentos;
+                if (erroRotinas) throw erroRotinas;
+
+                cacheClientes = clientes || [];
+
+                atualizarDashboard(clientes, recebimentos, pagamentos);
+                atualizarListaClientes(clientes);
+                atualizarListaRecebimentos(recebimentos);
+                atualizarListaPagamentos(pagamentos);
+                atualizarListaRotinas(rotinas);
+
+            } catch (erro) {
+                console.error('Erro ao carregar:', erro);
+                mostrarToast('Erro ao carregar dados: ' + (erro.message || 'ver console'), 'erro');
+            }
+        }
+
+        // ==============================================
+        // DASHBOARD
+        // ==============================================
+        function atualizarDashboard(clientes = [], recebimentos = [], pagamentos = []) {
+            const mesAtual = new Date().toISOString().slice(0, 7);
+
+            const recMes = recebimentos.filter(r => r.data?.startsWith(mesAtual));
+            const pagMes = pagamentos.filter(p => p.data?.startsWith(mesAtual));
+
+            const valorRecebido = recMes.filter(r => r.status === 'recebido').reduce((s, r) => s + Number(r.valor), 0);
+            const valorAPagar = pagMes.filter(p => p.status !== 'pago').reduce((s, p) => s + Number(p.valor), 0);
+            const valorPago = pagMes.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor), 0);
+            const saldo = valorRecebido - valorPago;
+
+            document.getElementById('qtd-clientes').textContent = clientes.length;
+            document.getElementById('valor-recebido').textContent = formatarMoeda(valorRecebido);
+            document.getElementById('valor-a-pagar').textContent = formatarMoeda(valorAPagar);
+            document.getElementById('saldo-atual').textContent = formatarMoeda(saldo);
+
+            const ctxP = document.getElementById('grafico-principal').getContext('2d');
+            if (graficoPrincipal) graficoPrincipal.destroy();
+            graficoPrincipal = new Chart(ctxP, {
+                type: 'bar',
+                data: {
+                    labels: ['Recebido', 'Pago', 'A Pagar'],
+                    datasets: [{
+                        data: [valorRecebido, valorPago, valorAPagar],
+                        backgroundColor: ['#2E7D32', '#C62828', '#F57C00']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            const ativos = clientes.filter(c => c.status === 'ativo').length;
+            const avencer = clientes.filter(c => c.status === 'a_vencer').length;
+            const inadimplentes = clientes.filter(c => c.status === 'inadimplente').length;
+
+            const ctxS = document.getElementById('grafico-status').getContext('2d');
+            if (graficoStatus) graficoStatus.destroy();
+            graficoStatus = new Chart(ctxS, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ativos', 'A Vencer', 'Inadimplentes'],
+                    datasets: [{
+                        data: [ativos, avencer, inadimplentes],
+                        backgroundColor: ['#2E7D32', '#F57C00', '#C62828']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        // ==============================================
+        // LISTAS (com escapeHTML contra XSS)
+        // ==============================================
+        function atualizarListaClientes(lista = []) {
+            const tbody = document.getElementById('lista-clientes');
+            tbody.innerHTML = lista.length ? lista.map(c => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="table-cell font-medium">${escapeHTML(c.nome)}</td>
+                    <td class="table-cell">${escapeHTML(c.servico)}</td>
+                    <td class="table-cell">${formatarMoeda(c.valor_mensal)}</td>
+                    <td class="table-cell">Dia ${escapeHTML(c.dia_vencimento)}</td>
+                    <td class="table-cell">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                            c.status === 'ativo' ? 'bg-success/10 text-success' :
+                            c.status === 'a_vencer' ? 'bg-warning/10 text-warning' :
+                            'bg-danger/10 text-danger'
+                        }">${escapeHTML((c.status || '').replace('_', ' '))}</span>
+                    </td>
+                    <td class="table-cell">
+                        <button class="text-gray-500 hover:text-primary" onclick="editarCliente('${c.id}')"><i class="fa fa-pencil"></i></button>
+                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirRegistro('clientes', '${c.id}')"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado</td></tr>';
+        }
+
+        function atualizarListaRecebimentos(lista = []) {
+            const tbody = document.getElementById('lista-recebimentos');
+            tbody.innerHTML = lista.length ? lista.map(r => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="table-cell">${escapeHTML(r.data) || '--'}</td>
+                    <td class="table-cell font-medium">${escapeHTML(r.cliente_nome)}</td>
+                    <td class="table-cell">${escapeHTML(r.descricao)}</td>
+                    <td class="table-cell">${formatarMoeda(r.valor)}</td>
+                    <td class="table-cell">${escapeHTML(r.vencimento) || '--'}</td>
+                    <td class="table-cell">
+                        <span class="${
+                            r.status === 'recebido' ? 'text-success' :
+                            r.status === 'vencido' ? 'text-danger' : 'text-warning'
+                        }">${escapeHTML(r.status)}</span>
+                    </td>
+                    <td class="table-cell">
+                        ${r.status !== 'recebido' ? `<button class="btn btn-sm btn-success" onclick="marcarStatus('recebimentos', '${r.id}', 'status', 'recebido')">Receber</button>` : ''}
+                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirRegistro('recebimentos', '${r.id}')"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="7" class="p-4 text-center text-gray-500">Nenhum lançamento</td></tr>';
+        }
+
+        function atualizarListaPagamentos(lista = []) {
+            const tbody = document.getElementById('lista-pagamentos');
+            tbody.innerHTML = lista.length ? lista.map(p => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="table-cell">${escapeHTML(p.data) || '--'}</td>
+                    <td class="table-cell font-medium">${escapeHTML(p.fornecedor)}</td>
+                    <td class="table-cell">${escapeHTML(p.descricao)}</td>
+                    <td class="table-cell">${formatarMoeda(p.valor)}</td>
+                    <td class="table-cell">${escapeHTML(p.vencimento) || '--'}</td>
+                    <td class="table-cell">
+                        <span class="${
+                            p.status === 'pago' ? 'text-success' : 'text-warning'
+                        }">${escapeHTML(p.status)}</span>
+                    </td>
+                    <td class="table-cell">
+                        ${p.status !== 'pago' ? `<button class="btn btn-sm btn-success" onclick="marcarStatus('pagamentos', '${p.id}', 'status', 'pago')">Pagar</button>` : ''}
+                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirRegistro('pagamentos', '${p.id}')"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="7" class="p-4 text-center text-gray-500">Nenhum lançamento</td></tr>';
+        }
+
+        function atualizarListaRotinas(lista = []) {
+            const tbody = document.getElementById('lista-rotinas');
+            tbody.innerHTML = lista.length ? lista.map(t => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="table-cell font-medium">${escapeHTML(t.tarefa)}</td>
+                    <td class="table-cell">${escapeHTML(t.alvo)}</td>
+                    <td class="table-cell">${escapeHTML(t.prazo) || '--'}</td>
+                    <td class="table-cell">
+                        <span class="${t.status === 'concluida' ? 'text-success' : 'text-warning'}">${escapeHTML(t.status)}</span>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhuma rotina cadastrada</td></tr>';
+        }
+
+        // ==============================================
+        // AÇÕES: EDITAR / EXCLUIR / MARCAR STATUS
+        // ==============================================
+        async function excluirRegistro(tabela, id) {
+            if (!supabase) return mostrarToast('Conecte-se ao Supabase primeiro.', 'aviso');
+            if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+            const { error } = await supabase.from(tabela).delete().eq('id', id);
+            if (error) { mostrarToast('Erro ao excluir: ' + error.message, 'erro'); return; }
+            mostrarToast('Registro excluído.', 'sucesso');
+            carregarDados();
+        }
+
+        async function marcarStatus(tabela, id, campo, valor) {
+            if (!supabase) return mostrarToast('Conecte-se ao Supabase primeiro.', 'aviso');
+            const { error } = await supabase.from(tabela).update({ [campo]: valor }).eq('id', id);
+            if (error) { mostrarToast('Erro ao atualizar: ' + error.message, 'erro'); return; }
+            mostrarToast('Status atualizado.', 'sucesso');
+            carregarDados();
+        }
+
+        function editarCliente(id) {
+            const cliente = cacheClientes.find(c => String(c.id) === String(id));
+            if (!cliente) return;
+            abrirFormCliente(cliente);
+        }
+
+        // ==============================================
+        // MODAIS DE CADASTRO
+        // ==============================================
+        document.getElementById('btn-novo-cliente').addEventListener('click', () => abrirFormCliente());
+        document.getElementById('btn-novo-recebimento').addEventListener('click', abrirFormRecebimento);
+        document.getElementById('btn-novo-pagamento').addEventListener('click', abrirFormPagamento);
+        document.getElementById('btn-nova-rotina').addEventListener('click', abrirFormRotina);
+
+        function abrirFormCliente(cliente = null) {
+            const editando = !!cliente;
+            abrirModal(`
+                <h3 class="font-heading font-bold text-lg mb-4">${editando ? 'Editar' : 'Novo'} Cliente</h3>
+                <form id="form-cliente" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nome</label>
+                        <input required class="input-field" name="nome" value="${editando ? escapeHTML(cliente.nome) : ''}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Serviço</label>
+                        <input class="input-field" name="servico" value="${editando ? escapeHTML(cliente.servico) : ''}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Valor Mensal (R$)</label>
+                        <input required type="number" step="0.01" min="0" class="input-field" name="valor_mensal" value="${editando ? cliente.valor_mensal : ''}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Dia de Vencimento</label>
+                        <input required type="number" min="1" max="31" class="input-field" name="dia_vencimento" value="${editando ? cliente.dia_vencimento : ''}">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Status</label>
+                        <select class="input-field" name="status">
+                            <option value="ativo" ${editando && cliente.status === 'ativo' ? 'selected' : ''}>Ativo</option>
+                            <option value="a_vencer" ${editando && cliente.status === 'a_vencer' ? 'selected' : ''}>A Vencer</option>
+                            <option value="inadimplente" ${editando && cliente.status === 'inadimplente' ? 'selected' : ''}>Inadimplente</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-primary flex-1">Salvar</button>
+                        <button type="button" class="btn btn-secondary-outline flex-1" onclick="fecharModal()">Cancelar</button>
+                    </div>
+                </form>
+            `);
+
+            document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!supabase) return mostrarToast('Conecte-se ao Supabase primeiro.', 'aviso');
+                const fd = new FormData(e.target);
+                const payload = {
+                    nome: fd.get('nome').trim(),
+                    servico: fd.get('servico').trim(),
+                    valor_mensal: parseFloat(fd.get('valor_mensal')),
+                    dia_vencimento: parseInt(fd.get('dia_vencimento'), 10),
+                    status: fd.get('status')
+                };
+                const query = editando
+                    ? supabase.from('clientes').update(payload).eq('id', cliente.id)
+                    : supabase.from('clientes').insert(payload);
+                const { error } = await query;
+                if (error) { mostrarToast('Erro ao salvar: ' + error.message, 'erro'); return; }
+                mostrarToast('Cliente salvo com sucesso!', 'sucesso');
+                fecharModal();
+                carregarDados();
+            });
+        }
+
+        function abrirFormRecebimento() {
+            const opcoesClientes = cacheClientes.map(c => `<option value="${escapeHTML(c.nome)}">${escapeHTML(c.nome)}</option>`).join('');
+            abrirModal(`
+                <h3 class="font-heading font-bold text-lg mb-4">Novo Recebimento</h3>
+                <form id="form-recebimento" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Cliente</label>
+                        <input list="lista-nomes-clientes" required class="input-field" name="cliente_nome">
+                        <datalist id="lista-nomes-clientes">${opcoesClientes}</datalist>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Descrição</label>
+                        <input class="input-field" name="descricao">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Valor (R$)</label>
+                        <input required type="number" step="0.01" min="0" class="input-field" name="valor">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Data</label>
+                            <input type="date" class="input-field" name="data">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Vencimento</label>
+                            <input type="date" class="input-field" name="vencimento">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Status</label>
+                        <select class="input-field" name="status">
+                            <option value="pendente">Pendente</option>
+                            <option value="recebido">Recebido</option>
+                            <option value="vencido">Vencido</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-success flex-1">Salvar</button>
+                        <button type="button" class="btn btn-secondary-outline flex-1" onclick="fecharModal()">Cancelar</button>
+                    </div>
+                </form>
+            `);
+
+            document.getElementById('form-recebimento').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!supabase) return mostrarToast('Conecte-se ao Supabase primeiro.', 'aviso');
+                const fd = new FormData(e.target);
+                const payload = {
+                    cliente_nome: fd.get('cliente_nome').trim(),
+                    descricao: fd.get('descricao').trim(),
+                    valor: parseFloat(fd.get('valor')),
+                    data: fd.get('data') || null,
+                    vencimento: fd.get('vencimento') || null,
+                    status: fd.get('status')
+                };
+                const { error } = await supabase.from('recebimentos').insert(payload);
+                if (error) { mostrarToast('Erro ao salvar: ' + error.message, 'erro'); return; }
+                mostrarToast('Recebimento lançado com sucesso!', 'sucesso');
+                fecharModal();
+                carregarDados();
+            });
+        }
+
+        function abrirFormPagamento() {
+            abrirModal(`
+                <h3 class="font-heading font-bold text-lg mb-4">Novo Pagamento</h3>
+                <form id="form-pagamento" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Fornecedor</label>
+                        <input required class="input-field" name="fornecedor">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Descrição</label>
+                        <input class="input-field" name="descricao">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Valor (R$)</label>
+                        <input required type="number" step="0.01" min="0" class="input-field" name="valor">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Data</label>
+                            <input type="date" class="input-field" name="data">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Vencimento</label>
+                            <input type="date" class="input-field" name="vencimento">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Status</label>
+                        <select class="input-field" name="status">
+                            <option value="pendente">Pendente</option>
+                            <option value="pago">Pago</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-danger flex-1">Salvar</button>
+                        <button type="button" class="btn btn-secondary-outline flex-1" onclick="fecharModal()">Cancelar</button>
+                    </div>
+                </form>
+            `);
+
+            document.getElementById('form-pagamento').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!supabase) return mostrarToast('Conecte-se ao Supabase primeiro.', 'aviso');
+                const fd = new FormData(e.target);
+                const payload = {
+                    fornecedor: fd.get('fornecedor').trim(),
+                    descricao: fd.get('descricao').trim(),
+                    valor: parseFloat(fd.get('valor')),
+                    data: fd.get('data') || null,
+                    vencimento: fd.get('vencimento') || null,
+                    status: fd.get('status')
+                };
+                const { error } = await supabase.from('pagamentos').insert(payload);
+                if (error) { mostrarToast('Erro ao salvar: ' + error.message, 'erro'); return; }
+                mostrarToast('Pagamento lançado com sucesso!', 'sucesso');
+                fecharModal();
+                carregarDados();
+            });
+        }
+
+        function abrirFormRotina() {
+            abrirModal(`
+                <h3 class="font-heading font-bold text-lg mb-4">Nova Tarefa</h3>
+                <form id="form-rotina" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tarefa</label>
+                        <input required class="input-field" name="tarefa">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Alvo (cliente/área)</label>
+                        <input class="input-field" name="alvo">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Prazo</label>
+                        <input type="date" class="input-field" name="prazo">
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-primary flex-1">Salvar</button>
+                        <button type="button" class="btn btn-secondary-outline flex-1" onclick="fecharModal()">Cancelar</button>
+                    </div>
+                </form>
+            `);
+
+            document.getElementById('form-rotina').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!supabase) return mostrarToast('Conecte-se ao Supabase primeiro.', 'aviso');
+                const fd = new FormData(e.target);
+                const payload = {
+                    tarefa: fd.get('tarefa').trim(),
+                    alvo: fd.get('alvo').trim(),
+                    prazo: fd.get('prazo') || null,
+                    status: 'pendente'
+                };
+                const { error } = await supabase.from('rotinas').insert(payload);
+                if (error) { mostrarToast('Erro ao salvar: ' + error.message, 'erro'); return; }
+                mostrarToast('Tarefa criada com sucesso!', 'sucesso');
+                fecharModal();
+                carregarDados();
+            });
+        }
+    </script>
+</body>
+</html>
