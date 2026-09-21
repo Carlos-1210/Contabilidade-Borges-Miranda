@@ -357,6 +357,7 @@
                     <table class="w-full">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="table-cell text-left font-semibold">Mês Ref.</th>
                                 <th class="table-cell text-left font-semibold">Data</th>
                                 <th class="table-cell text-left font-semibold">Cliente</th>
                                 <th class="table-cell text-left font-semibold">Descrição</th>
@@ -367,7 +368,7 @@
                             </tr>
                         </thead>
                         <tbody id="lista-recebimentos">
-                            <tr><td colspan="7" class="p-4 text-center text-gray-500">Carregando...</td></tr>
+                            <tr><td colspan="8" class="p-4 text-center text-gray-500">Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -918,11 +919,23 @@ git push -u origin main</pre>
             `).join('') : '<tr><td colspan="7" class="p-4 text-center text-gray-500">Nenhum cliente cadastrado</td></tr>';
         }
 
+        function formatarMesReferencia(mesRef) {
+            if (!mesRef) return '--';
+            const [ano, mes] = mesRef.split('-');
+            const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const idx = parseInt(mes, 10) - 1;
+            return nomes[idx] ? `${nomes[idx]}/${ano}` : mesRef;
+        }
+
         function atualizarListaRecebimentos() {
             const lista = appData.recebimentos;
             const tbody = document.getElementById('lista-recebimentos');
             tbody.innerHTML = lista.length ? lista.map(r => `
                 <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="table-cell">
+                        ${escapeHTML(formatarMesReferencia(r.mes_referencia))}
+                        ${r.mes_referencia && r.mes_referencia > new Date().toISOString().slice(0, 7) ? '<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-secondary/10 text-secondary">futuro</span>' : ''}
+                    </td>
                     <td class="table-cell">${escapeHTML(r.data) || '--'}</td>
                     <td class="table-cell font-medium">${escapeHTML(r.cliente_nome)}</td>
                     <td class="table-cell">${escapeHTML(r.descricao)}</td>
@@ -931,12 +944,14 @@ git push -u origin main</pre>
                     <td class="table-cell">
                         <span class="${r.status === 'recebido' ? 'text-success' : r.status === 'vencido' ? 'text-danger' : 'text-warning'}">${escapeHTML(r.status)}</span>
                     </td>
-                    <td class="table-cell">
+                    <td class="table-cell whitespace-nowrap">
                         ${r.status !== 'recebido' ? `<button class="btn btn-sm btn-success" onclick="marcarStatus('recebimentos', '${r.id}', 'recebido')">Receber</button>` : ''}
-                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('recebimentos', '${r.id}')"><i class="fa fa-trash"></i></button>
+                        <button class="text-gray-500 hover:text-primary ml-2" onclick="editarRecebimento('${r.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
+                        <button class="text-gray-500 hover:text-secondary ml-2" onclick="gerarReciboRecebimento('${r.id}')" title="Gerar recibo em PDF"><i class="fa fa-file-pdf-o"></i></button>
+                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('recebimentos', '${r.id}')" title="Excluir"><i class="fa fa-trash"></i></button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="7" class="p-4 text-center text-gray-500">Nenhum lançamento</td></tr>';
+            `).join('') : '<tr><td colspan="8" class="p-4 text-center text-gray-500">Nenhum lançamento</td></tr>';
         }
 
         function atualizarListaPagamentos() {
@@ -1007,7 +1022,7 @@ git push -u origin main</pre>
         // MODAIS DE CADASTRO
         // ==============================================
         document.getElementById('btn-novo-cliente').addEventListener('click', () => abrirFormCliente());
-        document.getElementById('btn-novo-recebimento').addEventListener('click', abrirFormRecebimento);
+        document.getElementById('btn-novo-recebimento').addEventListener('click', () => abrirFormRecebimento());
         document.getElementById('btn-novo-pagamento').addEventListener('click', abrirFormPagamento);
         document.getElementById('btn-nova-rotina').addEventListener('click', abrirFormRotina);
 
@@ -1112,40 +1127,47 @@ git push -u origin main</pre>
             });
         }
 
-        function abrirFormRecebimento() {
+        function abrirFormRecebimento(recebimento = null) {
+            const editando = !!recebimento;
             const opcoesClientes = appData.clientes.map(c => `<option value="${escapeHTML(c.nome)}">${escapeHTML(c.nome)}</option>`).join('');
+            const mesAtualISO = new Date().toISOString().slice(0, 7);
             abrirModal(`
-                <h3 class="font-heading font-bold text-lg mb-4">Novo Recebimento</h3>
+                <h3 class="font-heading font-bold text-lg mb-4">${editando ? 'Editar' : 'Novo'} Recebimento</h3>
                 <form id="form-recebimento" class="space-y-3">
                     <div>
                         <label class="block text-sm font-medium mb-1">Cliente</label>
-                        <input list="lista-nomes-clientes" required class="input-field" name="cliente_nome">
+                        <input list="lista-nomes-clientes" required class="input-field" name="cliente_nome" value="${editando ? escapeHTML(recebimento.cliente_nome) : ''}">
                         <datalist id="lista-nomes-clientes">${opcoesClientes}</datalist>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium mb-1">Mês de Referência</label>
+                        <input type="month" class="input-field" name="mes_referencia" value="${editando ? (recebimento.mes_referencia || '') : mesAtualISO}">
+                        <p class="text-xs text-gray-400 mt-1">Escolha um mês futuro para lançar recebimentos antecipadamente (ex: mensalidades recorrentes).</p>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium mb-1">Descrição</label>
-                        <input class="input-field" name="descricao">
+                        <input class="input-field" name="descricao" value="${editando ? escapeHTML(recebimento.descricao) : ''}">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Valor (R$)</label>
-                        <input required inputmode="numeric" class="input-field" name="valor" placeholder="0,00">
+                        <input required inputmode="numeric" class="input-field" name="valor" placeholder="0,00" value="${editando ? Number(recebimento.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-sm font-medium mb-1">Data</label>
-                            <input type="date" class="input-field" name="data">
+                            <input type="date" class="input-field" name="data" value="${editando ? (recebimento.data || '') : ''}">
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">Vencimento</label>
-                            <input type="date" class="input-field" name="vencimento">
+                            <input type="date" class="input-field" name="vencimento" value="${editando ? (recebimento.vencimento || '') : ''}">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Status</label>
                         <select class="input-field" name="status">
-                            <option value="pendente">Pendente</option>
-                            <option value="recebido">Recebido</option>
-                            <option value="vencido">Vencido</option>
+                            <option value="pendente" ${editando && recebimento.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                            <option value="recebido" ${editando && recebimento.status === 'recebido' ? 'selected' : ''}>Recebido</option>
+                            <option value="vencido" ${editando && recebimento.status === 'vencido' ? 'selected' : ''}>Vencido</option>
                         </select>
                     </div>
                     <div class="flex gap-2 pt-2">
@@ -1162,19 +1184,77 @@ git push -u origin main</pre>
             formRecEl.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                appData.recebimentos.push({
-                    id: gerarId(),
+                const payload = {
                     cliente_nome: fd.get('cliente_nome').trim(),
+                    mes_referencia: fd.get('mes_referencia') || null,
                     descricao: fd.get('descricao').trim(),
                     valor: valorMoedaParaNumero(campoValorRec),
                     data: fd.get('data') || null,
                     vencimento: fd.get('vencimento') || null,
                     status: fd.get('status')
-                });
+                };
+                if (editando) { Object.assign(recebimento, payload); }
+                else { appData.recebimentos.push({ id: gerarId(), ...payload }); }
                 salvar();
-                mostrarToast('Recebimento lançado com sucesso!', 'sucesso');
+                mostrarToast('Recebimento salvo com sucesso!', 'sucesso');
                 fecharModal();
             });
+        }
+
+        function editarRecebimento(id) {
+            const recebimento = appData.recebimentos.find(r => r.id === id);
+            if (!recebimento) return;
+            abrirFormRecebimento(recebimento);
+        }
+
+        // Gera um recibo simples e aciona a impressão do navegador —
+        // o usuário escolhe "Salvar como PDF" na janela de impressão.
+        function gerarReciboRecebimento(id) {
+            const r = appData.recebimentos.find(item => item.id === id);
+            if (!r) return;
+
+            const janela = window.open('', '_blank', 'width=800,height=900');
+            if (!janela) {
+                mostrarToast('Seu navegador bloqueou a janela do recibo. Permita pop-ups para este site.', 'aviso');
+                return;
+            }
+
+            const dataFormatada = r.data ? new Date(r.data + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
+            const hoje = new Date().toLocaleDateString('pt-BR');
+
+            janela.document.write(`
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Recibo - ${escapeHTML(r.cliente_nome)}</title>
+                    <style>
+                        body { font-family: Arial, Helvetica, sans-serif; padding: 40px; color: #263238; max-width: 700px; margin: 0 auto; }
+                        h1 { font-size: 20px; border-bottom: 3px solid #0A2342; padding-bottom: 12px; color: #0A2342; }
+                        .linha { margin: 14px 0; font-size: 14px; }
+                        .label { font-weight: bold; display: inline-block; width: 170px; color: #444; }
+                        .valor-destaque { font-size: 24px; font-weight: bold; margin-top: 24px; color: #2E7D32; border-top: 1px dashed #ccc; padding-top: 16px; }
+                        .assinatura { margin-top: 90px; border-top: 1px solid #999; width: 320px; text-align: center; padding-top: 6px; font-size: 13px; color: #555; }
+                        .rodape { margin-top: 40px; font-size: 11px; color: #999; }
+                        .btn-imprimir { margin-top: 30px; padding: 10px 22px; background: #1E4072; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+                        @media print { .no-print { display: none; } body { padding: 0; } }
+                    </style>
+                </head>
+                <body>
+                    <h1>Recibo de Pagamento</h1>
+                    <div class="linha"><span class="label">Recebido de:</span> ${escapeHTML(r.cliente_nome)}</div>
+                    <div class="linha"><span class="label">Referente a:</span> ${escapeHTML(r.descricao) || '—'}</div>
+                    <div class="linha"><span class="label">Mês de referência:</span> ${escapeHTML(formatarMesReferencia(r.mes_referencia))}</div>
+                    <div class="linha"><span class="label">Data do recebimento:</span> ${dataFormatada}</div>
+                    <div class="linha"><span class="label">Status:</span> ${escapeHTML(r.status)}</div>
+                    <div class="valor-destaque">Valor: ${formatarMoeda(r.valor)}</div>
+                    <div class="assinatura">Assinatura</div>
+                    <p class="rodape">Recibo gerado em ${hoje} pelo sistema FinanContábil.</p>
+                    <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+                </body>
+                </html>
+            `);
+            janela.document.close();
         }
 
         function abrirFormPagamento() {
@@ -1323,7 +1403,7 @@ git push -u origin main</pre>
            using (auth.uid() = user_id);
          ================================================================ -->
     <script>
-       const SUPABASE_URL = "https://tjpjcznaskngumotahtf.supabase.co";
+        const SUPABASE_URL = "https://tjpjcznaskngumotahtf.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_Jn8vkIJFFX4uUAw9svxJ5A_S13t8WOj";
         const SUPABASE_TABLE = "sistema_dados";
 
@@ -1336,4 +1416,5 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
