@@ -748,16 +748,52 @@ git push -u origin main</pre>
             }
         }
 
+        // ==============================================
+        // LOGOUT AUTOMÁTICO POR INATIVIDADE (5 minutos)
+        // ==============================================
+        const TEMPO_INATIVIDADE_MS = 5 * 60 * 1000; // 5 minutos
+        let timerInatividade = null;
+        let ultimoReinicioInatividade = 0;
+
+        async function encerrarSessaoPorInatividade() {
+            if (supabaseClient && sessaoAtual) {
+                await supabaseClient.auth.signOut();
+                mostrarToast('Sessão encerrada por inatividade (5 minutos sem uso).', 'aviso');
+            }
+        }
+
+        function reiniciarTimerInatividade() {
+            // Só faz sentido controlar inatividade quando há uma sessão real do Supabase.
+            if (modoLocal || !sessaoAtual) {
+                clearTimeout(timerInatividade);
+                return;
+            }
+            // Throttle: evita recriar o timer a cada pixel de movimento do mouse.
+            const agora = Date.now();
+            if (agora - ultimoReinicioInatividade < 1000) return;
+            ultimoReinicioInatividade = agora;
+
+            clearTimeout(timerInatividade);
+            timerInatividade = setTimeout(encerrarSessaoPorInatividade, TEMPO_INATIVIDADE_MS);
+        }
+
+        // Qualquer interação do usuário reinicia a contagem
+        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach((evento) => {
+            document.addEventListener(evento, reiniciarTimerInatividade, { passive: true });
+        });
+
         function mostrarLogin() {
             document.getElementById('erro-fatal').classList.add('hidden');
             document.getElementById('tela-login').classList.remove('hidden');
             document.getElementById('app').classList.add('hidden');
+            clearTimeout(timerInatividade); // sem sessão ativa, não precisa mais contar
         }
 
         function mostrarApp() {
             document.getElementById('erro-fatal').classList.add('hidden');
             document.getElementById('tela-login').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
+            reiniciarTimerInatividade(); // começa a contar assim que o app é exibido
         }
 
         async function carregarDadosDoUsuario() {
@@ -1688,6 +1724,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
