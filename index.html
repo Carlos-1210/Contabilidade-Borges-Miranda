@@ -456,7 +456,7 @@ git push -u origin main</pre>
         // ==============================================
         // ESTADO GLOBAL
         // ==============================================
-        let supabase = null;
+        let supabaseClient = null;
         let modoLocal = true;
         let sessaoAtual = null;
         let graficoPrincipal = null;
@@ -486,10 +486,20 @@ git push -u origin main</pre>
         }
 
         window.addEventListener('error', (evento) => {
-            mostrarErroFatal((evento.message || 'Erro desconhecido') + '\n\nArquivo: ' + (evento.filename || '') + ' Linha: ' + (evento.lineno || ''));
+            const mensagem = (evento.message || 'Erro desconhecido') + '\n\nArquivo: ' + (evento.filename || '') + ' Linha: ' + (evento.lineno || '');
+            if (typeof mostrarErroFatal === 'function') {
+                mostrarErroFatal(mensagem);
+            } else if (window.__mostrarErroCarregamento) {
+                window.__mostrarErroCarregamento(mensagem);
+            }
         });
         window.addEventListener('unhandledrejection', (evento) => {
-            mostrarErroFatal('Erro em operação assíncrona: ' + (evento.reason?.message || evento.reason || 'desconhecido'));
+            const mensagem = 'Erro em operação assíncrona: ' + (evento.reason?.message || evento.reason || 'desconhecido');
+            if (typeof mostrarErroFatal === 'function') {
+                mostrarErroFatal(mensagem);
+            } else if (window.__mostrarErroCarregamento) {
+                window.__mostrarErroCarregamento(mensagem);
+            }
         });
 
         // ==============================================
@@ -567,7 +577,7 @@ git push -u origin main</pre>
             msgEl.textContent = '';
             msgEl.className = 'text-sm text-center';
 
-            if (!supabase) {
+            if (!supabaseClient) {
                 msgEl.textContent = 'Supabase não configurado — não é possível fazer login.';
                 msgEl.classList.add('text-danger');
                 return;
@@ -575,10 +585,10 @@ git push -u origin main</pre>
 
             try {
                 if (modoFormulario === 'entrar') {
-                    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+                    const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
                     if (error) throw error;
                 } else {
-                    const { data, error } = await supabase.auth.signUp({ email, password: senha });
+                    const { data, error } = await supabaseClient.auth.signUp({ email, password: senha });
                     if (error) throw error;
                     if (!data.session) {
                         msgEl.textContent = 'Conta criada! Verifique seu e-mail para confirmar antes de entrar.';
@@ -592,7 +602,7 @@ git push -u origin main</pre>
         });
 
         document.getElementById('btn-sair').addEventListener('click', async () => {
-            if (supabase) await supabase.auth.signOut();
+            if (supabaseClient) await supabaseClient.auth.signOut();
         });
 
         // ==============================================
@@ -620,10 +630,10 @@ git push -u origin main</pre>
             }
 
             modoLocal = false;
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             statusConfigEl.innerHTML = '<span class="text-success">Supabase configurado — aguardando login.</span>';
 
-            supabase.auth.onAuthStateChange((_evento, session) => {
+            supabaseClient.auth.onAuthStateChange((_evento, session) => {
                 sessaoAtual = session;
                 if (session) {
                     mostrarApp();
@@ -633,7 +643,7 @@ git push -u origin main</pre>
                 }
             });
 
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await supabaseClient.auth.getSession();
             sessaoAtual = session;
             if (session) {
                 mostrarApp();
@@ -662,7 +672,7 @@ git push -u origin main</pre>
             document.getElementById('btn-sair').classList.remove('hidden');
 
             try {
-                let { data, error } = await supabase
+                let { data, error } = await supabaseClient
                     .from(SUPABASE_TABLE)
                     .select('dados')
                     .eq('user_id', userId)
@@ -671,7 +681,7 @@ git push -u origin main</pre>
                 if (error) throw error;
 
                 if (!data) {
-                    const { error: erroInsert } = await supabase
+                    const { error: erroInsert } = await supabaseClient
                         .from(SUPABASE_TABLE)
                         .insert({ user_id: userId, dados: appData });
                     if (erroInsert) throw erroInsert;
@@ -696,9 +706,9 @@ git push -u origin main</pre>
 
         async function salvar() {
             renderizarTudo();
-            if (modoLocal || !supabase || !sessaoAtual) return;
+            if (modoLocal || !supabaseClient || !sessaoAtual) return;
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from(SUPABASE_TABLE)
                 .update({ dados: appData, atualizado_em: new Date().toISOString() })
                 .eq('user_id', sessaoAtual.user.id);
@@ -1188,3 +1198,4 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
