@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Controle Financeiro & Contábil</title>
+    <title>Borges&amp;Miranda Contabilidade - Sistema Financeiro</title>
 
     <!-- ============================================================
          PARA CONFIGURAR O SUPABASE, VÁ NO FINAL DESTE ARQUIVO
@@ -185,8 +185,9 @@
         <div class="bg-white rounded-2xl card-shadow max-w-md w-full p-8">
             <div class="text-center mb-6">
                 <h1 class="font-heading font-bold text-2xl text-primary">
-                    <i class="fa fa-balance-scale mr-2"></i>FinanContábil
+                    <i class="fa fa-balance-scale mr-2"></i>Borges&amp;Miranda
                 </h1>
+                <p class="text-xs text-gray-500 font-medium">Contabilidade</p>
                 <p class="text-gray-500 text-sm mt-1">Entre para acessar seus dados</p>
             </div>
 
@@ -219,9 +220,10 @@
         <aside class="w-64 bg-white card-shadow z-10 flex flex-col">
             <div class="p-5 border-b border-gray-100">
                 <h1 class="font-heading font-bold text-xl text-primary">
-                    <i class="fa fa-balance-scale mr-2"></i>FinanContábil
+                    <i class="fa fa-balance-scale mr-2"></i>Borges&amp;Miranda
                 </h1>
-                <p class="text-xs text-gray-500 mt-1">Supabase + Git • v3.1</p>
+                <p class="text-xs text-gray-500 font-medium">Contabilidade</p>
+                <p class="text-xs text-gray-400 mt-1">Supabase + Git • v3.1</p>
                 <div id="status-conexao" class="mt-2 text-xs">
                     <span class="text-gray-400"><i class="fa fa-circle-o-notch fa-spin"></i> Iniciando...</span>
                 </div>
@@ -260,7 +262,7 @@
                     </div>
                 </header>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-8">
                     <div class="stat-card">
                         <div class="flex justify-between items-start">
                             <div>
@@ -297,11 +299,22 @@
                     <div class="stat-card">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-gray-500 text-sm">A Pagar</p>
+                                <p class="text-gray-500 text-sm">A Pagar (Mês)</p>
                                 <h3 class="text-2xl font-bold mt-1 text-danger" id="valor-a-pagar">--</h3>
                             </div>
                             <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
                                 <i class="fa fa-credit-card"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-500 text-sm">Pago (Mês)</p>
+                                <h3 class="text-2xl font-bold mt-1" style="color:#5C6BC0" id="valor-pago">--</h3>
+                            </div>
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:#5C6BC01A; color:#5C6BC0">
+                                <i class="fa fa-check-circle"></i>
                             </div>
                         </div>
                     </div>
@@ -959,9 +972,13 @@ git push -u origin main</pre>
             // Considera o mês de referência do lançamento (permite calcular
             // corretamente valores futuros/pendentes que ainda não têm data).
             const mesDoRecebimento = (r) => r.mes_referencia || (r.vencimento ? r.vencimento.slice(0, 7) : (r.data ? r.data.slice(0, 7) : null));
+            // Pagamentos pendentes geralmente não têm "data" preenchida ainda
+            // (só é preenchida quando o pagamento é efetivado) — por isso usa
+            // o vencimento como respaldo, senão ficariam de fora do "A Pagar".
+            const mesDoPagamento = (p) => p.vencimento ? p.vencimento.slice(0, 7) : (p.data ? p.data.slice(0, 7) : null);
 
             const recMes = recebimentos.filter(r => mesDoRecebimento(r) === mesAtual);
-            const pagMes = pagamentos.filter(p => p.data?.startsWith(mesAtual));
+            const pagMes = pagamentos.filter(p => mesDoPagamento(p) === mesAtual);
 
             const valorRecebido = recMes.filter(r => r.status === 'recebido').reduce((s, r) => s + Number(r.valor), 0);
             const valorAReceber = recMes.filter(r => r.status !== 'recebido').reduce((s, r) => s + Number(r.valor), 0);
@@ -973,6 +990,7 @@ git push -u origin main</pre>
             document.getElementById('valor-recebido').textContent = formatarMoeda(valorRecebido);
             document.getElementById('valor-a-receber').textContent = formatarMoeda(valorAReceber);
             document.getElementById('valor-a-pagar').textContent = formatarMoeda(valorAPagar);
+            document.getElementById('valor-pago').textContent = formatarMoeda(valorPago);
             document.getElementById('saldo-atual').textContent = formatarMoeda(saldo);
 
             // Proteção: se o Chart.js não carregou (CDN bloqueado/offline),
@@ -1587,8 +1605,8 @@ git push -u origin main</pre>
                     <div class="folha">
                         <div class="cabecalho">
                             <div class="marca">
-                                <h1>FinanContábil</h1>
-                                <p>Sistema de Gestão Financeira</p>
+                                <h1>Borges&amp;Miranda</h1>
+                                <p>Contabilidade</p>
                             </div>
                             <div class="numero-box">
                                 <p class="titulo">Recibo Nº</p>
@@ -1624,7 +1642,7 @@ git push -u origin main</pre>
                         </div>
 
                         <div class="rodape">
-                            Documento gerado eletronicamente pelo sistema FinanContábil em ${hojeFormatado}. Recibo Nº ${r.numero_recibo}.
+                            Documento gerado eletronicamente pela Borges&amp;Miranda Contabilidade em ${hojeFormatado}. Recibo Nº ${r.numero_recibo}.
                         </div>
                     </div>
                     <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
@@ -1784,7 +1802,6 @@ git push -u origin main</pre>
         const SUPABASE_ANON_KEY = "sb_publishable_Jn8vkIJFFX4uUAw9svxJ5A_S13t8WOj";
         const SUPABASE_TABLE = "sistema_dados";
 
-
         // Reaplica a inicialização agora que as constantes acima existem
         try {
             iniciar();
@@ -1794,6 +1811,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
