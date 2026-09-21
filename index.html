@@ -447,6 +447,19 @@
                 </div>
 
                 <div class="bg-white rounded-xl p-6 card-shadow max-w-3xl mb-5">
+                    <h3 class="font-semibold mb-2"><i class="fa fa-shield mr-1"></i> Backup dos Dados</h3>
+                    <p class="text-sm text-gray-600 mb-4">Exporte uma cópia de segurança de todos os seus dados (clientes, recebimentos, pagamentos, rotinas) em um arquivo <code>.json</code>. Guarde esse arquivo em local seguro (Google Drive, e-mail para você mesmo, pendrive) — ele permite restaurar tudo caso algo dê errado no Supabase.</p>
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <button id="btn-exportar-backup" class="btn btn-primary"><i class="fa fa-download mr-1"></i> Exportar Backup (.json)</button>
+                        <label class="btn btn-secondary-outline cursor-pointer mb-0">
+                            <i class="fa fa-upload mr-1"></i> Importar Backup
+                            <input type="file" id="input-importar-backup" accept=".json,application/json" class="hidden">
+                        </label>
+                    </div>
+                    <p class="text-xs text-warning mt-3"><i class="fa fa-exclamation-triangle mr-1"></i> Importar um backup <strong>substitui todos os dados atuais</strong> pelos dados do arquivo. Use com cuidado.</p>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 card-shadow max-w-3xl mb-5">
                     <h3 class="font-semibold mb-2"><i class="fa fa-envelope mr-1"></i> Ativar login por e-mail no Supabase</h3>
                     <p class="text-sm text-gray-600">No painel do Supabase: <strong>Authentication → Providers</strong>, confirme que "Email" está habilitado. Para testar sem confirmar e-mail toda vez, vá em <strong>Authentication → Settings</strong> e desative "Confirm email" (religue antes de usar com usuários reais).</p>
                 </div>
@@ -855,6 +868,62 @@ git push -u origin main</pre>
             if (modoLocal) { renderizarTudo(); return; }
             carregarDadosDoUsuario();
         });
+
+        // ==============================================
+        // BACKUP (exportar / importar dados em .json)
+        // ==============================================
+        function exportarBackup() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const hoje = new Date().toISOString().slice(0, 10);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup-sistema-financeiro-${hoje}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+            mostrarToast('Backup exportado com sucesso!', 'sucesso');
+        }
+
+        function importarBackup(evento) {
+            const arquivo = evento.target.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = (e) => {
+                try {
+                    const dados = JSON.parse(e.target.result);
+                    if (!dados || typeof dados !== 'object') throw new Error('Formato inválido');
+
+                    const resumo = `Clientes: ${(dados.clientes || []).length}, Recebimentos: ${(dados.recebimentos || []).length}, Pagamentos: ${(dados.pagamentos || []).length}, Rotinas: ${(dados.rotinas || []).length}`;
+                    const confirmar = confirm(`Isso vai SUBSTITUIR todos os dados atuais pelos dados deste backup:\n\n${resumo}\n\nDeseja continuar?`);
+                    if (!confirmar) { evento.target.value = ''; return; }
+
+                    appData = {
+                        clientes: Array.isArray(dados.clientes) ? dados.clientes : [],
+                        recebimentos: Array.isArray(dados.recebimentos) ? dados.recebimentos : [],
+                        pagamentos: Array.isArray(dados.pagamentos) ? dados.pagamentos : [],
+                        rotinas: Array.isArray(dados.rotinas) ? dados.rotinas : [],
+                        proximoNumeroRecibo: Number(dados.proximoNumeroRecibo) || 1
+                    };
+                    salvar();
+                    mostrarToast('Backup importado com sucesso!', 'sucesso');
+                } catch (erro) {
+                    console.error('Erro ao importar backup:', erro);
+                    mostrarToast('Não foi possível importar: arquivo inválido ou corrompido.', 'erro');
+                }
+                evento.target.value = ''; // permite importar o mesmo arquivo de novo, se precisar
+            };
+            leitor.onerror = () => mostrarToast('Erro ao ler o arquivo de backup.', 'erro');
+            leitor.readAsText(arquivo);
+        }
+
+        document.getElementById('btn-exportar-backup').addEventListener('click', exportarBackup);
+        document.getElementById('input-importar-backup').addEventListener('change', importarBackup);
 
         // ==============================================
         // NAVEGAÇÃO
@@ -1715,6 +1784,7 @@ git push -u origin main</pre>
         const SUPABASE_ANON_KEY = "sb_publishable_Jn8vkIJFFX4uUAw9svxJ5A_S13t8WOj";
         const SUPABASE_TABLE = "sistema_dados";
 
+
         // Reaplica a inicialização agora que as constantes acima existem
         try {
             iniciar();
@@ -1724,6 +1794,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
