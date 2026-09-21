@@ -260,7 +260,7 @@
                     </div>
                 </header>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
                     <div class="stat-card">
                         <div class="flex justify-between items-start">
                             <div>
@@ -280,6 +280,17 @@
                             </div>
                             <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
                                 <i class="fa fa-money"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-500 text-sm">A Receber (Mês)</p>
+                                <h3 class="text-2xl font-bold mt-1 text-secondary" id="valor-a-receber">--</h3>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                                <i class="fa fa-hourglass-half"></i>
                             </div>
                         </div>
                     </div>
@@ -468,7 +479,8 @@ git push -u origin main</pre>
             clientes: [],
             recebimentos: [],
             pagamentos: [],
-            rotinas: []
+            rotinas: [],
+            proximoNumeroRecibo: 1
         };
 
         function gerarId() {
@@ -773,7 +785,8 @@ git push -u origin main</pre>
                         clientes: data.dados?.clientes || [],
                         recebimentos: data.dados?.recebimentos || [],
                         pagamentos: data.dados?.pagamentos || [],
-                        rotinas: data.dados?.rotinas || []
+                        rotinas: data.dados?.rotinas || [],
+                        proximoNumeroRecibo: data.dados?.proximoNumeroRecibo || 1
                     };
                 }
 
@@ -838,16 +851,22 @@ git push -u origin main</pre>
             const { clientes, recebimentos, pagamentos } = appData;
             const mesAtual = new Date().toISOString().slice(0, 7);
 
-            const recMes = recebimentos.filter(r => r.data?.startsWith(mesAtual));
+            // Considera o mês de referência do lançamento (permite calcular
+            // corretamente valores futuros/pendentes que ainda não têm data).
+            const mesDoRecebimento = (r) => r.mes_referencia || (r.vencimento ? r.vencimento.slice(0, 7) : (r.data ? r.data.slice(0, 7) : null));
+
+            const recMes = recebimentos.filter(r => mesDoRecebimento(r) === mesAtual);
             const pagMes = pagamentos.filter(p => p.data?.startsWith(mesAtual));
 
             const valorRecebido = recMes.filter(r => r.status === 'recebido').reduce((s, r) => s + Number(r.valor), 0);
+            const valorAReceber = recMes.filter(r => r.status !== 'recebido').reduce((s, r) => s + Number(r.valor), 0);
             const valorAPagar = pagMes.filter(p => p.status !== 'pago').reduce((s, p) => s + Number(p.valor), 0);
             const valorPago = pagMes.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor), 0);
             const saldo = valorRecebido - valorPago;
 
             document.getElementById('qtd-clientes').textContent = clientes.length;
             document.getElementById('valor-recebido').textContent = formatarMoeda(valorRecebido);
+            document.getElementById('valor-a-receber').textContent = formatarMoeda(valorAReceber);
             document.getElementById('valor-a-pagar').textContent = formatarMoeda(valorAPagar);
             document.getElementById('saldo-atual').textContent = formatarMoeda(saldo);
 
@@ -1207,49 +1226,302 @@ git push -u origin main</pre>
             abrirFormRecebimento(recebimento);
         }
 
-        // Gera um recibo simples e aciona a impressão do navegador —
-        // o usuário escolhe "Salvar como PDF" na janela de impressão.
+        // ==============================================
+        // VALOR POR EXTENSO (padrão de recibos brasileiros)
+        // ==============================================
+        function numeroPorExtenso(valor) {
+            const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez',
+                'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+            const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+            const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+            function trescentos(n) {
+                if (n === 0) return '';
+                if (n === 100) return 'cem';
+                const partes = [];
+                const c = Math.floor(n / 100);
+                const resto = n % 100;
+                if (c > 0) partes.push(centenas[c]);
+                if (resto > 0) {
+                    if (resto < 20) {
+                        partes.push(unidades[resto]);
+                    } else {
+                        const d = Math.floor(resto / 10);
+                        const u = resto % 10;
+                        partes.push(dezenas[d] + (u > 0 ? ' e ' + unidades[u] : ''));
+                    }
+                }
+                return partes.join(' e ');
+            }
+
+            function inteiroPorExtenso(n) {
+                if (n === 0) return 'zero';
+                const grupos = [
+                    { valor: 1000000000, singular: 'bilhão', plural: 'bilhões' },
+                    { valor: 1000000, singular: 'milhão', plural: 'milhões' },
+                    { valor: 1000, singular: 'mil', plural: 'mil' },
+                    { valor: 1, singular: '', plural: '' }
+                ];
+                const partes = [];
+                let resto = n;
+                for (const grupo of grupos) {
+                    const qtd = Math.floor(resto / grupo.valor);
+                    if (qtd > 0) {
+                        resto = resto % grupo.valor;
+                        if (grupo.valor === 1) {
+                            partes.push(trescentos(qtd));
+                        } else if (grupo.valor === 1000) {
+                            partes.push((qtd === 1 ? '' : trescentos(qtd) + ' ') + 'mil');
+                        } else {
+                            partes.push(trescentos(qtd) + ' ' + (qtd === 1 ? grupo.singular : grupo.plural));
+                        }
+                    }
+                }
+                return partes.join(' e ');
+            }
+
+            const inteiro = Math.floor(Math.abs(valor));
+            const centavos = Math.round((Math.abs(valor) - inteiro) * 100);
+
+            // Regra do português: números redondos de milhão/bilhão levam "de" antes da moeda
+            // (ex: "um milhão de reais"), mas não quando há outros valores somados
+            // (ex: "um milhão e cem reais").
+            const precisaDe = inteiro >= 1000000 && inteiro % 1000000 === 0;
+            let texto = inteiroPorExtenso(inteiro) + (precisaDe ? ' de' : '') + (inteiro === 1 ? ' real' : ' reais');
+            if (centavos > 0) {
+                texto += ' e ' + inteiroPorExtenso(centavos) + (centavos === 1 ? ' centavo' : ' centavos');
+            }
+            return texto.charAt(0).toUpperCase() + texto.slice(1);
+        }
+
+        // Gera um recibo profissional (numerado, com valor por extenso) e
+        // aciona a impressão do navegador — o usuário escolhe "Salvar como
+        // PDF" na janela de impressão, sem precisar de nenhuma biblioteca externa.
         function gerarReciboRecebimento(id) {
             const r = appData.recebimentos.find(item => item.id === id);
             if (!r) return;
 
-            const janela = window.open('', '_blank', 'width=800,height=900');
+            // Número sequencial fixo: gerado uma única vez e reaproveitado
+            // em reimpressões do mesmo recibo.
+            if (!r.numero_recibo) {
+                const numero = appData.proximoNumeroRecibo || 1;
+                r.numero_recibo = String(numero).padStart(6, '0');
+                appData.proximoNumeroRecibo = numero + 1;
+                salvar();
+            }
+
+            const janela = window.open('', '_blank', 'width=850,height=1000');
             if (!janela) {
                 mostrarToast('Seu navegador bloqueou a janela do recibo. Permita pop-ups para este site.', 'aviso');
                 return;
             }
 
+            const cliente = appData.clientes.find(c => c.nome === r.cliente_nome || c.nome_fantasia === r.cliente_nome);
             const dataFormatada = r.data ? new Date(r.data + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
-            const hoje = new Date().toLocaleDateString('pt-BR');
+            const vencimentoFormatado = r.vencimento ? new Date(r.vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
+            const hoje = new Date();
+            const hojeFormatado = hoje.toLocaleDateString('pt-BR');
+            const valorExtenso = numeroPorExtenso(r.valor);
 
             janela.document.write(`
                 <!DOCTYPE html>
                 <html lang="pt-BR">
                 <head>
                     <meta charset="UTF-8">
-                    <title>Recibo - ${escapeHTML(r.cliente_nome)}</title>
+                    <title>Recibo Nº ${r.numero_recibo} - ${escapeHTML(r.cliente_nome)}</title>
                     <style>
-                        body { font-family: Arial, Helvetica, sans-serif; padding: 40px; color: #263238; max-width: 700px; margin: 0 auto; }
-                        h1 { font-size: 20px; border-bottom: 3px solid #0A2342; padding-bottom: 12px; color: #0A2342; }
-                        .linha { margin: 14px 0; font-size: 14px; }
-                        .label { font-weight: bold; display: inline-block; width: 170px; color: #444; }
-                        .valor-destaque { font-size: 24px; font-weight: bold; margin-top: 24px; color: #2E7D32; border-top: 1px dashed #ccc; padding-top: 16px; }
-                        .assinatura { margin-top: 90px; border-top: 1px solid #999; width: 320px; text-align: center; padding-top: 6px; font-size: 13px; color: #555; }
-                        .rodape { margin-top: 40px; font-size: 11px; color: #999; }
-                        .btn-imprimir { margin-top: 30px; padding: 10px 22px; background: #1E4072; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
-                        @media print { .no-print { display: none; } body { padding: 0; } }
+                        * { box-sizing: border-box; }
+                        body {
+                            font-family: Georgia, 'Times New Roman', serif;
+                            color: #1a1a1a;
+                            background: #f0f0f0;
+                            margin: 0;
+                            padding: 30px;
+                        }
+                        .folha {
+                            max-width: 720px;
+                            margin: 0 auto;
+                            background: #fff;
+                            border: 1px solid #ccc;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                            padding: 48px 56px;
+                        }
+                        .cabecalho {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            border-bottom: 3px solid #0A2342;
+                            padding-bottom: 18px;
+                            margin-bottom: 28px;
+                        }
+                        .marca h1 {
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 20px;
+                            color: #0A2342;
+                            margin: 0 0 4px;
+                            letter-spacing: 0.5px;
+                        }
+                        .marca p {
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 11px;
+                            color: #777;
+                            margin: 0;
+                        }
+                        .numero-box {
+                            text-align: right;
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        .numero-box .titulo {
+                            font-size: 13px;
+                            color: #777;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            margin: 0 0 2px;
+                        }
+                        .numero-box .numero {
+                            font-size: 22px;
+                            font-weight: bold;
+                            color: #0A2342;
+                        }
+                        .numero-box .data-emissao {
+                            font-size: 12px;
+                            color: #777;
+                            margin-top: 4px;
+                        }
+                        .corpo p {
+                            font-size: 15px;
+                            line-height: 1.9;
+                            text-align: justify;
+                            margin: 0 0 20px;
+                        }
+                        .destaque {
+                            font-weight: bold;
+                            color: #0A2342;
+                        }
+                        .valor-caixa {
+                            background: #F5F7FA;
+                            border-left: 4px solid #2E7D32;
+                            padding: 16px 20px;
+                            margin: 24px 0;
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        .valor-caixa .valor-numero {
+                            font-size: 26px;
+                            font-weight: bold;
+                            color: #2E7D32;
+                        }
+                        .valor-caixa .valor-por-extenso {
+                            font-size: 13px;
+                            color: #555;
+                            margin-top: 4px;
+                            font-style: italic;
+                        }
+                        table.detalhes {
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 13px;
+                            margin: 24px 0;
+                        }
+                        table.detalhes td {
+                            padding: 8px 4px;
+                            border-bottom: 1px solid #eee;
+                        }
+                        table.detalhes td:first-child {
+                            color: #777;
+                            width: 180px;
+                        }
+                        table.detalhes td:last-child {
+                            font-weight: 600;
+                            color: #1a1a1a;
+                        }
+                        .assinaturas {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-top: 90px;
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        .linha-assinatura {
+                            width: 45%;
+                            text-align: center;
+                            border-top: 1px solid #999;
+                            padding-top: 8px;
+                            font-size: 12px;
+                            color: #555;
+                        }
+                        .rodape {
+                            margin-top: 40px;
+                            padding-top: 16px;
+                            border-top: 1px dashed #ccc;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 10px;
+                            color: #aaa;
+                            text-align: center;
+                        }
+                        .btn-imprimir {
+                            display: block;
+                            margin: 24px auto 0;
+                            padding: 12px 28px;
+                            background: #1E4072;
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        .btn-imprimir:hover { background: #0A2342; }
+                        @media print {
+                            body { background: #fff; padding: 0; }
+                            .folha { box-shadow: none; border: none; padding: 20px; }
+                            .no-print { display: none; }
+                        }
                     </style>
                 </head>
                 <body>
-                    <h1>Recibo de Pagamento</h1>
-                    <div class="linha"><span class="label">Recebido de:</span> ${escapeHTML(r.cliente_nome)}</div>
-                    <div class="linha"><span class="label">Referente a:</span> ${escapeHTML(r.descricao) || '—'}</div>
-                    <div class="linha"><span class="label">Mês de referência:</span> ${escapeHTML(formatarMesReferencia(r.mes_referencia))}</div>
-                    <div class="linha"><span class="label">Data do recebimento:</span> ${dataFormatada}</div>
-                    <div class="linha"><span class="label">Status:</span> ${escapeHTML(r.status)}</div>
-                    <div class="valor-destaque">Valor: ${formatarMoeda(r.valor)}</div>
-                    <div class="assinatura">Assinatura</div>
-                    <p class="rodape">Recibo gerado em ${hoje} pelo sistema FinanContábil.</p>
+                    <div class="folha">
+                        <div class="cabecalho">
+                            <div class="marca">
+                                <h1>FinanContábil</h1>
+                                <p>Sistema de Gestão Financeira</p>
+                            </div>
+                            <div class="numero-box">
+                                <p class="titulo">Recibo Nº</p>
+                                <p class="numero">${r.numero_recibo}</p>
+                                <p class="data-emissao">Emitido em ${hojeFormatado}</p>
+                            </div>
+                        </div>
+
+                        <div class="corpo">
+                            <p>
+                                Recebemos de <span class="destaque">${escapeHTML(r.cliente_nome)}</span>${cliente && cliente.cnpj ? `, CNPJ <span class="destaque">${escapeHTML(cliente.cnpj)}</span>,` : ','}
+                                a importância de <span class="destaque">${formatarMoeda(r.valor)}</span> (${valorExtenso}),
+                                referente a <span class="destaque">${escapeHTML(r.descricao) || 'serviços prestados'}</span>${r.mes_referencia ? `, competência de <span class="destaque">${escapeHTML(formatarMesReferencia(r.mes_referencia))}</span>` : ''}.
+                            </p>
+                            <p>Para maior clareza, firmamos o presente recibo, dando plena e geral quitação referente ao valor acima mencionado.</p>
+                        </div>
+
+                        <div class="valor-caixa">
+                            <div class="valor-numero">${formatarMoeda(r.valor)}</div>
+                            <div class="valor-por-extenso">${valorExtenso}</div>
+                        </div>
+
+                        <table class="detalhes">
+                            <tr><td>Mês de referência</td><td>${escapeHTML(formatarMesReferencia(r.mes_referencia))}</td></tr>
+                            <tr><td>Data do recebimento</td><td>${dataFormatada}</td></tr>
+                            <tr><td>Vencimento original</td><td>${vencimentoFormatado}</td></tr>
+                            <tr><td>Status</td><td style="text-transform:capitalize">${escapeHTML(r.status)}</td></tr>
+                        </table>
+
+                        <div class="assinaturas">
+                            <div class="linha-assinatura">Recebedor</div>
+                            <div class="linha-assinatura">${escapeHTML(r.cliente_nome)}</div>
+                        </div>
+
+                        <div class="rodape">
+                            Documento gerado eletronicamente pelo sistema FinanContábil em ${hojeFormatado}. Recibo Nº ${r.numero_recibo}.
+                        </div>
+                    </div>
                     <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
                 </body>
                 </html>
@@ -1416,5 +1688,6 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
