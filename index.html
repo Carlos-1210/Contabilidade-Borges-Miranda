@@ -25,8 +25,8 @@
             overlay.id = 'erro-carregamento';
             overlay.style.cssText = 'display:none;position:fixed;inset:0;background:#F5F7FA;color:#263238;font-family:sans-serif;padding:24px;z-index:99999;overflow:auto;';
             overlay.innerHTML =
-                '<div style="max-width:600px;margin:40px auto;background:#fff;border:2px solid #9C3B33;border-radius:12px;padding:24px;">' +
-                '<h1 style="color:#9C3B33;font-size:20px;margin:0 0 12px;">⚠ Não foi possível carregar o sistema</h1>' +
+                '<div style="max-width:600px;margin:40px auto;background:#fff;border:2px solid #DC2626;border-radius:12px;padding:24px;">' +
+                '<h1 style="color:#DC2626;font-size:20px;margin:0 0 12px;">⚠ Não foi possível carregar o sistema</h1>' +
                 '<p style="font-size:14px;margin:0 0 12px;">Um ou mais recursos externos não carregaram. Isso costuma acontecer por:</p>' +
                 '<ul style="font-size:14px;margin:0 0 12px;padding-left:20px;">' +
                 '<li>Internet instável ou sem conexão no momento em que a página abriu</li>' +
@@ -72,7 +72,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
         // Se o CDN do Tailwind não carregou, "tailwind" não existe.
@@ -82,17 +82,17 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#102A43',
-                        secondary: '#B8863A',
-                        success: '#1F6F54',
-                        danger: '#9C3B33',
-                        warning: '#A66A2E',
-                        light: '#F3F1EA',
-                        dark: '#1B2430'
+                        primary: '#1E293B',
+                        secondary: '#4F46E5',
+                        success: '#16A34A',
+                        danger: '#DC2626',
+                        warning: '#D97706',
+                        light: '#F8FAFC',
+                        dark: '#0F172A'
                     },
                     fontFamily: {
-                        sans: ['IBM Plex Sans', 'sans-serif'],
-                        heading: ['Fraunces', 'serif']
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Plus Jakarta Sans', 'sans-serif']
                     },
                 },
             }
@@ -114,55 +114,54 @@
     <style type="text/tailwindcss">
         @layer utilities {
             .card-shadow {
-                box-shadow: 0 1px 2px rgba(16, 42, 67, 0.06);
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
             }
             .sidebar-link {
-                @apply flex items-center gap-3 px-4 py-3 transition-all duration-150 text-white/60 hover:text-white hover:bg-white/5 border-l-2 border-transparent;
+                @apply flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg transition-colors duration-150 text-gray-500 hover:text-gray-900 hover:bg-gray-50 font-medium text-sm;
             }
             .sidebar-link.active {
-                @apply text-white bg-white/5 border-l-2;
-                border-left-color: #B8863A;
+                @apply text-secondary bg-secondary/[0.08];
             }
             .stat-card {
-                @apply bg-white p-5 card-shadow;
-                border-top: 3px solid #B8863A;
+                @apply bg-white rounded-2xl p-5 border border-gray-100 card-shadow;
             }
             .table-cell {
                 @apply px-4 py-3 text-sm;
             }
             .input-field {
-                @apply w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary transition-colors;
+                @apply w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-colors text-sm;
             }
             .btn {
-                @apply px-4 py-2 rounded font-medium transition-all duration-150;
+                @apply px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-150;
             }
             .btn-primary {
-                @apply bg-primary text-white hover:bg-secondary;
+                @apply bg-secondary text-white hover:bg-indigo-700 shadow-sm;
             }
             .btn-success {
-                @apply bg-success text-white hover:bg-success/90;
+                @apply bg-success text-white hover:bg-green-700 shadow-sm;
             }
             .btn-danger {
-                @apply bg-danger text-white hover:bg-danger/90;
+                @apply bg-danger text-white hover:bg-red-700 shadow-sm;
             }
             .btn-secondary-outline {
-                @apply border border-gray-300 text-gray-600 hover:bg-gray-50;
+                @apply border border-gray-200 text-gray-600 hover:bg-gray-50;
             }
             .btn-sm {
-                @apply px-2 py-1 text-xs;
+                @apply px-2.5 py-1 text-xs rounded-md;
             }
             .modal-overlay {
-                @apply fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4;
+                @apply fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4;
             }
             .modal-box {
-                @apply bg-white rounded-xl p-6 w-full max-w-md card-shadow max-h-[90vh] overflow-y-auto;
+                @apply bg-white rounded-2xl p-6 w-full max-w-md card-shadow max-h-[90vh] overflow-y-auto;
             }
             .toast {
-                @apply fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg text-white text-sm z-[60] flex items-center gap-2;
+                @apply fixed bottom-5 right-5 px-4 py-3 rounded-xl shadow-lg text-white text-sm z-[60] flex items-center gap-2;
             }
         }
     </style>
 </head>
+
 <body class="bg-light font-sans text-dark min-h-screen">
 
     <!-- Container de Notificações (toasts) -->
@@ -183,46 +182,29 @@
     <!-- ============================================== -->
     <!-- TELA DE LOGIN / CADASTRO                        -->
     <!-- ============================================== -->
-    <div id="tela-login" class="hidden min-h-screen flex flex-col md:flex-row">
-        <!-- Painel de marca (a "capa" do livro-razão) -->
-        <div class="hidden md:flex md:w-1/2 lg:w-3/5 bg-primary relative overflow-hidden flex-col justify-between p-12">
-            <div class="absolute inset-0 opacity-[0.05] pointer-events-none" style="background-image: repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 32px);"></div>
-            <div class="relative z-10">
-                <h1 class="font-heading text-2xl text-white font-semibold">
-                    <i class="fa fa-balance-scale mr-2" style="color:#B8863A"></i>Borges&amp;Miranda
-                </h1>
-                <p class="text-white/40 text-sm mt-1">Contabilidade</p>
-            </div>
-            <div class="relative z-10">
-                <p class="font-heading text-3xl text-white leading-snug max-w-md">
-                    Clareza em cada lançamento,<br>confiança em cada balanço.
-                </p>
-                <p class="text-white/40 text-xs mt-6 max-w-xs">Sistema de gestão financeira para escritórios de contabilidade.</p>
-            </div>
-        </div>
-
-        <!-- Painel de acesso -->
-        <div class="flex-1 flex items-center justify-center p-6 md:p-12 bg-light">
-            <div class="w-full max-w-sm">
-                <div class="mb-8 md:hidden text-center">
-                    <h1 class="font-heading font-semibold text-2xl text-primary">
-                        <i class="fa fa-balance-scale mr-2" style="color:#B8863A"></i>Borges&amp;Miranda
-                    </h1>
-                    <p class="text-xs text-gray-500 font-medium">Contabilidade</p>
+    <div id="tela-login" class="hidden min-h-screen flex items-center justify-center bg-light p-4">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-8">
+                <div class="w-12 h-12 rounded-xl bg-secondary text-white flex items-center justify-center text-lg mx-auto mb-4">
+                    <i class="fa fa-balance-scale"></i>
                 </div>
+                <h1 class="font-heading font-bold text-xl text-primary">Borges&amp;Miranda</h1>
+                <p class="text-sm text-gray-400 font-medium">Contabilidade</p>
+            </div>
 
-                <div class="flex mb-6 border-b border-gray-200">
-                    <button id="tab-entrar" class="flex-1 pb-3 text-sm font-medium text-secondary border-b-2 border-secondary">Entrar</button>
+            <div class="bg-white rounded-2xl card-shadow border border-gray-100 p-8">
+                <div class="flex mb-6 border-b border-gray-100">
+                    <button id="tab-entrar" class="flex-1 pb-3 text-sm font-semibold text-secondary border-b-2 border-secondary">Entrar</button>
                     <button id="tab-criar" class="flex-1 pb-3 text-sm font-medium text-gray-400">Criar conta</button>
                 </div>
 
                 <form id="form-login" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">E-mail</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">E-mail</label>
                         <input required type="email" id="login-email" class="input-field" placeholder="seuemail@exemplo.com">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Senha</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Senha</label>
                         <input required type="password" id="login-senha" class="input-field" placeholder="Mínimo 6 caracteres" minlength="6">
                     </div>
                     <button type="submit" id="btn-acao-login" class="btn btn-primary w-full">
@@ -231,6 +213,8 @@
                     <p id="login-mensagem" class="text-sm text-center"></p>
                 </form>
             </div>
+
+            <p class="text-center text-xs text-gray-400 mt-6">Sistema de gestão financeira para escritórios de contabilidade</p>
         </div>
     </div>
 
@@ -238,19 +222,21 @@
     <!-- APLICAÇÃO PRINCIPAL (só aparece após login)     -->
     <!-- ============================================== -->
     <div id="app" class="hidden flex min-h-screen">
-        <aside class="w-64 bg-primary z-10 flex flex-col">
-            <div class="p-5 border-b border-white/10">
-                <h1 class="font-heading font-semibold text-xl text-white">
-                    <i class="fa fa-balance-scale mr-2" style="color:#B8863A"></i>Borges&amp;Miranda
+        <aside class="w-64 bg-white border-r border-gray-100 z-10 flex flex-col">
+            <div class="p-5 border-b border-gray-100">
+                <h1 class="font-heading font-bold text-lg text-primary flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-secondary text-white flex items-center justify-center text-sm">
+                        <i class="fa fa-balance-scale"></i>
+                    </span>
+                    Borges&amp;Miranda
                 </h1>
-                <p class="text-xs text-white/50 font-medium">Contabilidade</p>
-                <p class="text-xs text-white/30 mt-1">Supabase + Git • v3.1</p>
-                <div id="status-conexao" class="mt-2 text-xs">
-                    <span class="text-white/40"><i class="fa fa-circle-o-notch fa-spin"></i> Iniciando...</span>
+                <p class="text-xs text-gray-400 font-medium mt-1 ml-10">Contabilidade</p>
+                <div id="status-conexao" class="mt-3 text-xs">
+                    <span class="text-gray-400"><i class="fa fa-circle-o-notch fa-spin"></i> Iniciando...</span>
                 </div>
             </div>
 
-            <nav class="flex-1 py-6 px-0">
+            <nav class="flex-1 py-4">
                 <ul class="space-y-1">
                     <li><a href="#dashboard" class="sidebar-link active"><i class="fa fa-tachometer w-5 text-center"></i> Dashboard</a></li>
                     <li><a href="#clientes" class="sidebar-link"><i class="fa fa-users w-5 text-center"></i> Clientes</a></li>
@@ -261,9 +247,9 @@
                 </ul>
             </nav>
 
-            <div class="p-4 border-t border-white/10">
-                <p class="text-xs text-white/50 truncate" id="usuario-logado">--</p>
-                <button id="btn-sair" class="text-xs text-white/60 hover:text-white mt-1">
+            <div class="p-4 border-t border-gray-100">
+                <p class="text-xs text-gray-500 truncate font-medium" id="usuario-logado">--</p>
+                <button id="btn-sair" class="text-xs text-gray-400 hover:text-danger mt-1 transition-colors">
                     <i class="fa fa-sign-out mr-1"></i> Sair
                 </button>
             </div>
@@ -332,9 +318,9 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-gray-500 text-sm">Pago (Mês)</p>
-                                <h3 class="text-2xl font-bold mt-1" style="color:#5A7A99" id="valor-pago">--</h3>
+                                <h3 class="text-2xl font-bold mt-1" style="color:#0D9488" id="valor-pago">--</h3>
                             </div>
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:#5A7A991A; color:#5A7A99">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:#0D94881A; color:#0D9488">
                                 <i class="fa fa-check-circle"></i>
                             </div>
                         </div>
@@ -701,11 +687,11 @@ git push -u origin main</pre>
             const tabCriar = document.getElementById('tab-criar');
             const btn = document.getElementById('btn-acao-login');
             if (modo === 'entrar') {
-                tabEntrar.className = 'flex-1 pb-3 text-sm font-medium text-secondary border-b-2 border-secondary';
+                tabEntrar.className = 'flex-1 pb-3 text-sm font-semibold text-secondary border-b-2 border-secondary';
                 tabCriar.className = 'flex-1 pb-3 text-sm font-medium text-gray-400';
                 btn.innerHTML = '<i class="fa fa-sign-in mr-1"></i> Entrar';
             } else {
-                tabCriar.className = 'flex-1 pb-3 text-sm font-medium text-secondary border-b-2 border-secondary';
+                tabCriar.className = 'flex-1 pb-3 text-sm font-semibold text-secondary border-b-2 border-secondary';
                 tabEntrar.className = 'flex-1 pb-3 text-sm font-medium text-gray-400';
                 btn.innerHTML = '<i class="fa fa-user-plus mr-1"></i> Criar conta';
             }
@@ -757,7 +743,7 @@ git push -u origin main</pre>
                 modoLocal = true;
                 statusConfigEl.innerHTML = '<span class="text-warning">Modo local — dados existem apenas nesta sessão, sem login.</span>';
                 document.getElementById('status-conexao').innerHTML =
-                    '<span style="color:#D9A45B"><i class="fa fa-desktop"></i> Modo local (sem Supabase)</span>';
+                    '<span class="text-warning"><i class="fa fa-desktop"></i> Modo local (sem Supabase)</span>';
                 document.getElementById('usuario-logado').textContent = 'Sessão local';
                 document.getElementById('btn-sair').classList.add('hidden');
                 document.getElementById('subtitulo-dashboard').textContent = 'Modo local — os dados não são salvos permanentemente';
@@ -874,7 +860,7 @@ git push -u origin main</pre>
                 }
 
                 document.getElementById('status-conexao').innerHTML =
-                    '<span style="color:#5BAE95"><i class="fa fa-check-circle"></i> Conectado ao Supabase</span>';
+                    '<span class="text-success"><i class="fa fa-check-circle"></i> Conectado ao Supabase</span>';
                 document.getElementById('subtitulo-dashboard').textContent = 'Dados sincronizados com Supabase';
                 renderizarTudo();
             } catch (erro) {
@@ -1032,7 +1018,7 @@ git push -u origin main</pre>
                     type: 'bar',
                     data: {
                         labels: ['Recebido', 'Pago', 'A Pagar'],
-                        datasets: [{ data: [valorRecebido, valorPago, valorAPagar], backgroundColor: ['#1F6F54', '#9C3B33', '#A66A2E'] }]
+                        datasets: [{ data: [valorRecebido, valorPago, valorAPagar], backgroundColor: ['#16A34A', '#DC2626', '#D97706'] }]
                     },
                     options: { responsive: true, plugins: { legend: { display: false } } }
                 });
@@ -1047,7 +1033,7 @@ git push -u origin main</pre>
                     type: 'doughnut',
                     data: {
                         labels: ['Ativos', 'A Vencer', 'Inadimplentes'],
-                        datasets: [{ data: [ativos, avencer, inadimplentes], backgroundColor: ['#1F6F54', '#A66A2E', '#9C3B33'] }]
+                        datasets: [{ data: [ativos, avencer, inadimplentes], backgroundColor: ['#16A34A', '#D97706', '#DC2626'] }]
                     },
                     options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
                 });
@@ -1494,14 +1480,14 @@ git push -u origin main</pre>
                             display: flex;
                             justify-content: space-between;
                             align-items: flex-start;
-                            border-bottom: 3px solid #102A43;
+                            border-bottom: 3px solid #1E293B;
                             padding-bottom: 18px;
                             margin-bottom: 28px;
                         }
                         .marca h1 {
                             font-family: Arial, Helvetica, sans-serif;
                             font-size: 20px;
-                            color: #102A43;
+                            color: #1E293B;
                             margin: 0 0 4px;
                             letter-spacing: 0.5px;
                         }
@@ -1525,7 +1511,7 @@ git push -u origin main</pre>
                         .numero-box .numero {
                             font-size: 22px;
                             font-weight: bold;
-                            color: #102A43;
+                            color: #1E293B;
                         }
                         .numero-box .data-emissao {
                             font-size: 12px;
@@ -1540,11 +1526,11 @@ git push -u origin main</pre>
                         }
                         .destaque {
                             font-weight: bold;
-                            color: #102A43;
+                            color: #1E293B;
                         }
                         .valor-caixa {
                             background: #F5F7FA;
-                            border-left: 4px solid #1F6F54;
+                            border-left: 4px solid #16A34A;
                             padding: 16px 20px;
                             margin: 24px 0;
                             font-family: Arial, Helvetica, sans-serif;
@@ -1552,7 +1538,7 @@ git push -u origin main</pre>
                         .valor-caixa .valor-numero {
                             font-size: 26px;
                             font-weight: bold;
-                            color: #1F6F54;
+                            color: #16A34A;
                         }
                         .valor-caixa .valor-por-extenso {
                             font-size: 13px;
@@ -1606,7 +1592,7 @@ git push -u origin main</pre>
                             display: block;
                             margin: 24px auto 0;
                             padding: 12px 28px;
-                            background: #B8863A;
+                            background: #4F46E5;
                             color: white;
                             border: none;
                             border-radius: 8px;
@@ -1614,7 +1600,7 @@ git push -u origin main</pre>
                             font-size: 14px;
                             font-family: Arial, Helvetica, sans-serif;
                         }
-                        .btn-imprimir:hover { background: #102A43; }
+                        .btn-imprimir:hover { background: #1E293B; }
                         @media print {
                             body { background: #fff; padding: 0; }
                             .folha { box-shadow: none; border: none; padding: 20px; }
@@ -1832,6 +1818,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
