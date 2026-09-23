@@ -1109,9 +1109,10 @@ git push -u origin main</pre>
                     <td class="table-cell">
                         <span class="${p.status === 'pago' ? 'text-success' : 'text-warning'}">${escapeHTML(p.status)}</span>
                     </td>
-                    <td class="table-cell">
+                    <td class="table-cell whitespace-nowrap">
                         ${p.status !== 'pago' ? `<button class="btn btn-sm btn-success" onclick="marcarStatus('pagamentos', '${p.id}', 'pago')">Pagar</button>` : ''}
-                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('pagamentos', '${p.id}')"><i class="fa fa-trash"></i></button>
+                        <button class="text-gray-500 hover:text-primary ml-2" onclick="editarPagamento('${p.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
+                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('pagamentos', '${p.id}')" title="Excluir"><i class="fa fa-trash"></i></button>
                     </td>
                 </tr>
             `).join('') : '<tr><td colspan="7" class="p-4 text-center text-gray-500">Nenhum lançamento</td></tr>';
@@ -1165,7 +1166,7 @@ git push -u origin main</pre>
         // ==============================================
         document.getElementById('btn-novo-cliente').addEventListener('click', () => abrirFormCliente());
         document.getElementById('btn-novo-recebimento').addEventListener('click', () => abrirFormRecebimento());
-        document.getElementById('btn-novo-pagamento').addEventListener('click', abrirFormPagamento);
+        document.getElementById('btn-novo-pagamento').addEventListener('click', () => abrirFormPagamento());
         document.getElementById('btn-nova-rotina').addEventListener('click', abrirFormRotina);
 
         function abrirFormCliente(cliente = null) {
@@ -1652,37 +1653,38 @@ git push -u origin main</pre>
             janela.document.close();
         }
 
-        function abrirFormPagamento() {
+        function abrirFormPagamento(pagamento = null) {
+            const editando = !!pagamento;
             abrirModal(`
-                <h3 class="font-heading font-bold text-lg mb-4">Novo Pagamento</h3>
+                <h3 class="font-heading font-bold text-lg mb-4">${editando ? 'Editar' : 'Novo'} Pagamento</h3>
                 <form id="form-pagamento" class="space-y-3">
                     <div>
                         <label class="block text-sm font-medium mb-1">Fornecedor</label>
-                        <input required class="input-field" name="fornecedor">
+                        <input required class="input-field" name="fornecedor" value="${editando ? escapeHTML(pagamento.fornecedor) : ''}">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Descrição</label>
-                        <input class="input-field" name="descricao">
+                        <input class="input-field" name="descricao" value="${editando ? escapeHTML(pagamento.descricao) : ''}">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Valor (R$)</label>
-                        <input required inputmode="numeric" class="input-field" name="valor" placeholder="0,00">
+                        <input required inputmode="numeric" class="input-field" name="valor" placeholder="0,00" value="${editando ? Number(pagamento.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-sm font-medium mb-1">Data</label>
-                            <input type="date" class="input-field" name="data">
+                            <input type="date" class="input-field" name="data" value="${editando ? (pagamento.data || '') : ''}">
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">Vencimento</label>
-                            <input type="date" class="input-field" name="vencimento">
+                            <input type="date" class="input-field" name="vencimento" value="${editando ? (pagamento.vencimento || '') : ''}">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Status</label>
                         <select class="input-field" name="status">
-                            <option value="pendente">Pendente</option>
-                            <option value="pago">Pago</option>
+                            <option value="pendente" ${editando && pagamento.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                            <option value="pago" ${editando && pagamento.status === 'pago' ? 'selected' : ''}>Pago</option>
                         </select>
                     </div>
                     <div class="flex gap-2 pt-2">
@@ -1699,19 +1701,26 @@ git push -u origin main</pre>
             formPagEl.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                appData.pagamentos.push({
-                    id: gerarId(),
+                const payload = {
                     fornecedor: fd.get('fornecedor').trim(),
                     descricao: fd.get('descricao').trim(),
                     valor: valorMoedaParaNumero(campoValorPag),
                     data: fd.get('data') || null,
                     vencimento: fd.get('vencimento') || null,
                     status: fd.get('status')
-                });
+                };
+                if (editando) { Object.assign(pagamento, payload); }
+                else { appData.pagamentos.push({ id: gerarId(), ...payload }); }
                 salvar();
-                mostrarToast('Pagamento lançado com sucesso!', 'sucesso');
+                mostrarToast('Pagamento salvo com sucesso!', 'sucesso');
                 fecharModal();
             });
+        }
+
+        function editarPagamento(id) {
+            const pagamento = appData.pagamentos.find(p => p.id === id);
+            if (!pagamento) return;
+            abrirFormPagamento(pagamento);
         }
 
         function abrirFormRotina() {
@@ -1811,6 +1820,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
