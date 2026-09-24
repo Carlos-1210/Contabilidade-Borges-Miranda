@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -454,6 +454,40 @@
                 <h2 class="font-heading font-bold text-xl text-primary mb-5">Configuração de Conexão</h2>
 
                 <div class="bg-white rounded-xl p-6 card-shadow max-w-3xl mb-5">
+                    <h3 class="font-semibold mb-2"><i class="fa fa-building mr-1"></i> Dados do Escritório (aparecem no recibo)</h3>
+                    <p class="text-sm text-gray-600 mb-4">Essas informações são usadas para montar o cabeçalho do recibo em PDF, como um papel timbrado.</p>
+                    <form id="form-dados-empresa" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Nome do Escritório</label>
+                            <input class="input-field" name="nome" placeholder="Borges&Miranda Contabilidade">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">CNPJ</label>
+                            <input class="input-field" name="cnpj" placeholder="00.000.000/0000-00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Telefone</label>
+                            <input class="input-field" name="telefone" placeholder="(00) 00000-0000">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Endereço</label>
+                            <input class="input-field" name="endereco" placeholder="Rua, número, bairro, cidade/UF">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Cidade (para "Local e data" no recibo)</label>
+                            <input class="input-field" name="cidade" placeholder="São Paulo">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">E-mail</label>
+                            <input class="input-field" name="email" placeholder="contato@escritorio.com.br">
+                        </div>
+                        <div class="md:col-span-2">
+                            <button type="submit" class="btn btn-primary">Salvar Dados do Escritório</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 card-shadow max-w-3xl mb-5">
                     <h3 class="font-semibold mb-2"><i class="fa fa-info-circle mr-1"></i> Onde configurar</h3>
                     <p class="text-sm text-gray-600">Existe apenas UM lugar no arquivo .html para mexer: role até o final do arquivo (antes de <code>&lt;/body&gt;</code>) e procure o bloco escrito <strong>"COLOQUE AQUI SEUS DADOS DO SUPABASE"</strong>. O SQL para criar a tabela também está ali, como comentário, pronto para copiar.</p>
                     <p class="text-sm text-gray-600 mt-3">Status atual: <span id="status-configuracao" class="font-medium">verificando...</span></p>
@@ -506,7 +540,15 @@ git push -u origin main</pre>
             recebimentos: [],
             pagamentos: [],
             rotinas: [],
-            proximoNumeroRecibo: 1
+            proximoNumeroRecibo: 1,
+            dadosEmpresa: {
+                nome: 'Borges&Miranda Contabilidade',
+                cnpj: '',
+                telefone: '',
+                endereco: '',
+                cidade: '',
+                email: ''
+            }
         };
 
         function gerarId() {
@@ -848,7 +890,8 @@ git push -u origin main</pre>
                         recebimentos: data.dados?.recebimentos || [],
                         pagamentos: data.dados?.pagamentos || [],
                         rotinas: data.dados?.rotinas || [],
-                        proximoNumeroRecibo: data.dados?.proximoNumeroRecibo || 1
+                        proximoNumeroRecibo: data.dados?.proximoNumeroRecibo || 1,
+                        dadosEmpresa: data.dados?.dadosEmpresa || appData.dadosEmpresa
                     };
                 }
 
@@ -880,6 +923,36 @@ git push -u origin main</pre>
         document.getElementById('btn-sincronizar').addEventListener('click', () => {
             if (modoLocal) { renderizarTudo(); return; }
             carregarDadosDoUsuario();
+        });
+
+        // ==============================================
+        // DADOS DO ESCRITÓRIO (aparecem no recibo)
+        // ==============================================
+        function preencherFormDadosEmpresa() {
+            const form = document.getElementById('form-dados-empresa');
+            if (!form) return;
+            const d = appData.dadosEmpresa || {};
+            form.querySelector('[name="nome"]').value = d.nome || '';
+            form.querySelector('[name="cnpj"]').value = d.cnpj || '';
+            form.querySelector('[name="telefone"]').value = d.telefone || '';
+            form.querySelector('[name="endereco"]').value = d.endereco || '';
+            form.querySelector('[name="cidade"]').value = d.cidade || '';
+            form.querySelector('[name="email"]').value = d.email || '';
+        }
+
+        document.getElementById('form-dados-empresa').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            appData.dadosEmpresa = {
+                nome: (fd.get('nome') || '').trim() || 'Borges&Miranda Contabilidade',
+                cnpj: (fd.get('cnpj') || '').trim(),
+                telefone: (fd.get('telefone') || '').trim(),
+                endereco: (fd.get('endereco') || '').trim(),
+                cidade: (fd.get('cidade') || '').trim(),
+                email: (fd.get('email') || '').trim()
+            };
+            salvar();
+            mostrarToast('Dados do escritório salvos!', 'sucesso');
         });
 
         // ==============================================
@@ -921,8 +994,10 @@ git push -u origin main</pre>
                         recebimentos: Array.isArray(dados.recebimentos) ? dados.recebimentos : [],
                         pagamentos: Array.isArray(dados.pagamentos) ? dados.pagamentos : [],
                         rotinas: Array.isArray(dados.rotinas) ? dados.rotinas : [],
-                        proximoNumeroRecibo: Number(dados.proximoNumeroRecibo) || 1
+                        proximoNumeroRecibo: Number(dados.proximoNumeroRecibo) || 1,
+                        dadosEmpresa: dados.dadosEmpresa && typeof dados.dadosEmpresa === 'object' ? dados.dadosEmpresa : appData.dadosEmpresa
                     };
+                    preencherFormDadosEmpresa();
                     salvar();
                     mostrarToast('Backup importado com sucesso!', 'sucesso');
                 } catch (erro) {
@@ -963,6 +1038,7 @@ git push -u origin main</pre>
             atualizarListaRecebimentos();
             atualizarListaPagamentos();
             atualizarListaRotinas();
+            preencherFormDadosEmpresa();
         }
 
         function atualizarDashboard() {
@@ -1440,12 +1516,75 @@ git push -u origin main</pre>
                 return;
             }
 
+            const empresa = appData.dadosEmpresa || {};
             const cliente = appData.clientes.find(c => c.nome === r.cliente_nome || c.nome_fantasia === r.cliente_nome);
             const dataFormatada = r.data ? new Date(r.data + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
             const vencimentoFormatado = r.vencimento ? new Date(r.vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
             const hoje = new Date();
             const hojeFormatado = hoje.toLocaleDateString('pt-BR');
             const valorExtenso = numeroPorExtenso(r.valor);
+            const localData = (empresa.cidade ? empresa.cidade + ', ' : '') + hojeFormatado;
+            const statusSelo = r.status === 'recebido' ? 'QUITADO' : r.status === 'vencido' ? 'EM ABERTO' : 'PENDENTE';
+            const corSelo = r.status === 'recebido' ? '#2E7D32' : r.status === 'vencido' ? '#C62828' : '#F57C00';
+
+            // Bloco de identificação do escritório, reaproveitado no corpo e no canhoto
+            const infoEmpresa = [empresa.cnpj ? `CNPJ ${escapeHTML(empresa.cnpj)}` : null, escapeHTML(empresa.endereco) || null, empresa.telefone ? `Tel: ${escapeHTML(empresa.telefone)}` : null]
+                .filter(Boolean).join(' &middot; ');
+
+            function montarCorpoRecibo(compacto) {
+                return `
+                    <div class="cabecalho">
+                        <div class="marca">
+                            <h1>${escapeHTML(empresa.nome) || 'Borges&amp;Miranda'}</h1>
+                            <p>Contabilidade</p>
+                            ${!compacto && infoEmpresa ? `<p class="info-empresa">${infoEmpresa}</p>` : ''}
+                        </div>
+                        <div class="numero-box">
+                            <p class="titulo">${compacto ? 'Canhoto — Recibo' : 'Recibo'} Nº</p>
+                            <p class="numero">${r.numero_recibo}</p>
+                            <p class="data-emissao">Emitido em ${hojeFormatado}</p>
+                            <span class="selo" style="border-color:${corSelo}; color:${corSelo}">${statusSelo}</span>
+                        </div>
+                    </div>
+
+                    ${compacto ? `
+                    <table class="detalhes compacto">
+                        <tr><td>Recebido de</td><td>${escapeHTML(r.cliente_nome)}</td></tr>
+                        <tr><td>Referente a</td><td>${escapeHTML(r.descricao) || 'Serviços prestados'}</td></tr>
+                        <tr><td>Valor</td><td class="valor-inline">${formatarMoeda(r.valor)}</td></tr>
+                        <tr><td>Data</td><td>${dataFormatada}</td></tr>
+                    </table>
+                    ` : `
+                    <div class="corpo">
+                        <p>
+                            Recebemos de <span class="destaque">${escapeHTML(r.cliente_nome)}</span>${cliente && cliente.cnpj ? `, CNPJ <span class="destaque">${escapeHTML(cliente.cnpj)}</span>,` : ','}
+                            a importância de <span class="destaque">${formatarMoeda(r.valor)}</span> (${valorExtenso}),
+                            referente a <span class="destaque">${escapeHTML(r.descricao) || 'serviços prestados'}</span>${r.mes_referencia ? `, competência de <span class="destaque">${escapeHTML(formatarMesReferencia(r.mes_referencia))}</span>` : ''}.
+                        </p>
+                        <p>Para maior clareza, firmamos o presente recibo, dando plena e geral quitação referente ao valor acima mencionado, não restando nada mais a reclamar a este título.</p>
+                    </div>
+
+                    <div class="valor-caixa">
+                        <div class="valor-numero">${formatarMoeda(r.valor)}</div>
+                        <div class="valor-por-extenso">${valorExtenso}</div>
+                    </div>
+
+                    <table class="detalhes">
+                        <tr><td>Mês de referência</td><td>${escapeHTML(formatarMesReferencia(r.mes_referencia))}</td></tr>
+                        <tr><td>Data do recebimento</td><td>${dataFormatada}</td></tr>
+                        <tr><td>Vencimento original</td><td>${vencimentoFormatado}</td></tr>
+                        <tr><td>Forma</td><td style="text-transform:capitalize">${escapeHTML(r.status)}</td></tr>
+                    </table>
+
+                    <div class="local-data">${localData}</div>
+
+                    <div class="assinaturas">
+                        <div class="linha-assinatura">${escapeHTML(empresa.nome) || 'Borges&amp;Miranda Contabilidade'}<br><span>Emitente</span></div>
+                        <div class="linha-assinatura">${escapeHTML(r.cliente_nome)}<br><span>Recebedor</span></div>
+                    </div>
+                    `}
+                `;
+            }
 
             janela.document.write(`
                 <!DOCTYPE html>
@@ -1455,6 +1594,7 @@ git push -u origin main</pre>
                     <title>Recibo Nº ${r.numero_recibo} - ${escapeHTML(r.cliente_nome)}</title>
                     <style>
                         * { box-sizing: border-box; }
+                        @page { size: A4; margin: 14mm; }
                         body {
                             font-family: Georgia, 'Times New Roman', serif;
                             color: #1a1a1a;
@@ -1464,26 +1604,46 @@ git push -u origin main</pre>
                         }
                         .folha {
                             max-width: 720px;
-                            margin: 0 auto;
+                            margin: 0 auto 20px;
                             background: #fff;
                             border: 1px solid #ccc;
                             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                            padding: 48px 56px;
+                            padding: 44px 56px 36px;
+                            position: relative;
+                        }
+                        .folha.canhoto {
+                            padding: 24px 32px;
+                            border-style: dashed;
+                        }
+                        .linha-corte {
+                            max-width: 720px;
+                            margin: 0 auto;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            color: #999;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 11px;
+                        }
+                        .linha-corte::before, .linha-corte::after {
+                            content: '';
+                            flex: 1;
+                            border-top: 1px dashed #bbb;
                         }
                         .cabecalho {
                             display: flex;
                             justify-content: space-between;
                             align-items: flex-start;
                             border-bottom: 3px solid #0A2342;
-                            padding-bottom: 18px;
-                            margin-bottom: 28px;
+                            padding-bottom: 16px;
+                            margin-bottom: 24px;
                         }
                         .marca h1 {
                             font-family: Arial, Helvetica, sans-serif;
-                            font-size: 20px;
+                            font-size: 19px;
                             color: #0A2342;
-                            margin: 0 0 4px;
-                            letter-spacing: 0.5px;
+                            margin: 0 0 3px;
+                            letter-spacing: 0.3px;
                         }
                         .marca p {
                             font-family: Arial, Helvetica, sans-serif;
@@ -1491,12 +1651,17 @@ git push -u origin main</pre>
                             color: #777;
                             margin: 0;
                         }
+                        .marca .info-empresa {
+                            margin-top: 6px;
+                            font-size: 10px;
+                            color: #999;
+                        }
                         .numero-box {
                             text-align: right;
                             font-family: Arial, Helvetica, sans-serif;
                         }
                         .numero-box .titulo {
-                            font-size: 13px;
+                            font-size: 12px;
                             color: #777;
                             text-transform: uppercase;
                             letter-spacing: 1px;
@@ -1506,17 +1671,28 @@ git push -u origin main</pre>
                             font-size: 22px;
                             font-weight: bold;
                             color: #0A2342;
+                            margin: 0;
                         }
                         .numero-box .data-emissao {
-                            font-size: 12px;
+                            font-size: 11px;
                             color: #777;
-                            margin-top: 4px;
+                            margin: 3px 0 8px;
+                        }
+                        .selo {
+                            display: inline-block;
+                            border: 2px solid;
+                            border-radius: 4px;
+                            padding: 2px 10px;
+                            font-size: 11px;
+                            font-weight: bold;
+                            letter-spacing: 1px;
+                            transform: rotate(-3deg);
                         }
                         .corpo p {
-                            font-size: 15px;
-                            line-height: 1.9;
+                            font-size: 14.5px;
+                            line-height: 1.85;
                             text-align: justify;
-                            margin: 0 0 20px;
+                            margin: 0 0 16px;
                         }
                         .destaque {
                             font-weight: bold;
@@ -1525,12 +1701,12 @@ git push -u origin main</pre>
                         .valor-caixa {
                             background: #F5F7FA;
                             border-left: 4px solid #2E7D32;
-                            padding: 16px 20px;
-                            margin: 24px 0;
+                            padding: 14px 20px;
+                            margin: 20px 0;
                             font-family: Arial, Helvetica, sans-serif;
                         }
                         .valor-caixa .valor-numero {
-                            font-size: 26px;
+                            font-size: 25px;
                             font-weight: bold;
                             color: #2E7D32;
                         }
@@ -1545,37 +1721,61 @@ git push -u origin main</pre>
                             border-collapse: collapse;
                             font-family: Arial, Helvetica, sans-serif;
                             font-size: 13px;
-                            margin: 24px 0;
+                            margin: 20px 0;
+                        }
+                        table.detalhes.compacto {
+                            font-size: 12px;
+                            margin: 10px 0;
                         }
                         table.detalhes td {
-                            padding: 8px 4px;
+                            padding: 7px 4px;
                             border-bottom: 1px solid #eee;
                         }
                         table.detalhes td:first-child {
                             color: #777;
-                            width: 180px;
+                            width: 170px;
                         }
                         table.detalhes td:last-child {
                             font-weight: 600;
                             color: #1a1a1a;
                         }
+                        table.detalhes .valor-inline {
+                            color: #2E7D32;
+                            font-weight: bold;
+                        }
+                        .local-data {
+                            margin-top: 28px;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 13px;
+                            color: #555;
+                            text-align: right;
+                        }
                         .assinaturas {
                             display: flex;
                             justify-content: space-between;
-                            margin-top: 90px;
+                            gap: 24px;
+                            margin-top: 56px;
                             font-family: Arial, Helvetica, sans-serif;
                         }
                         .linha-assinatura {
-                            width: 45%;
+                            width: 46%;
                             text-align: center;
                             border-top: 1px solid #999;
                             padding-top: 8px;
                             font-size: 12px;
-                            color: #555;
+                            color: #333;
+                            font-weight: 600;
+                        }
+                        .linha-assinatura span {
+                            display: block;
+                            font-weight: 400;
+                            color: #999;
+                            font-size: 11px;
+                            margin-top: 2px;
                         }
                         .rodape {
-                            margin-top: 40px;
-                            padding-top: 16px;
+                            margin-top: 32px;
+                            padding-top: 14px;
                             border-top: 1px dashed #ccc;
                             font-family: Arial, Helvetica, sans-serif;
                             font-size: 10px;
@@ -1597,55 +1797,27 @@ git push -u origin main</pre>
                         .btn-imprimir:hover { background: #0A2342; }
                         @media print {
                             body { background: #fff; padding: 0; }
-                            .folha { box-shadow: none; border: none; padding: 20px; }
+                            .folha { box-shadow: none; border: none; padding: 10mm 4mm; }
+                            .folha.canhoto { border-top: 1px dashed #999; }
+                            .linha-corte { display: none; }
                             .no-print { display: none; }
                         }
                     </style>
                 </head>
                 <body>
                     <div class="folha">
-                        <div class="cabecalho">
-                            <div class="marca">
-                                <h1>Borges&amp;Miranda</h1>
-                                <p>Contabilidade</p>
-                            </div>
-                            <div class="numero-box">
-                                <p class="titulo">Recibo Nº</p>
-                                <p class="numero">${r.numero_recibo}</p>
-                                <p class="data-emissao">Emitido em ${hojeFormatado}</p>
-                            </div>
-                        </div>
-
-                        <div class="corpo">
-                            <p>
-                                Recebemos de <span class="destaque">${escapeHTML(r.cliente_nome)}</span>${cliente && cliente.cnpj ? `, CNPJ <span class="destaque">${escapeHTML(cliente.cnpj)}</span>,` : ','}
-                                a importância de <span class="destaque">${formatarMoeda(r.valor)}</span> (${valorExtenso}),
-                                referente a <span class="destaque">${escapeHTML(r.descricao) || 'serviços prestados'}</span>${r.mes_referencia ? `, competência de <span class="destaque">${escapeHTML(formatarMesReferencia(r.mes_referencia))}</span>` : ''}.
-                            </p>
-                            <p>Para maior clareza, firmamos o presente recibo, dando plena e geral quitação referente ao valor acima mencionado.</p>
-                        </div>
-
-                        <div class="valor-caixa">
-                            <div class="valor-numero">${formatarMoeda(r.valor)}</div>
-                            <div class="valor-por-extenso">${valorExtenso}</div>
-                        </div>
-
-                        <table class="detalhes">
-                            <tr><td>Mês de referência</td><td>${escapeHTML(formatarMesReferencia(r.mes_referencia))}</td></tr>
-                            <tr><td>Data do recebimento</td><td>${dataFormatada}</td></tr>
-                            <tr><td>Vencimento original</td><td>${vencimentoFormatado}</td></tr>
-                            <tr><td>Status</td><td style="text-transform:capitalize">${escapeHTML(r.status)}</td></tr>
-                        </table>
-
-                        <div class="assinaturas">
-                            <div class="linha-assinatura">Recebedor</div>
-                            <div class="linha-assinatura">${escapeHTML(r.cliente_nome)}</div>
-                        </div>
-
+                        ${montarCorpoRecibo(false)}
                         <div class="rodape">
-                            Documento gerado eletronicamente pela Borges&amp;Miranda Contabilidade em ${hojeFormatado}. Recibo Nº ${r.numero_recibo}.
+                            Documento gerado eletronicamente pela ${escapeHTML(empresa.nome) || 'Borges&amp;Miranda Contabilidade'} em ${hojeFormatado}. Recibo Nº ${r.numero_recibo}.
                         </div>
                     </div>
+
+                    <div class="linha-corte no-print">✂ recorte aqui — canhoto para o pagador</div>
+
+                    <div class="folha canhoto">
+                        ${montarCorpoRecibo(true)}
+                    </div>
+
                     <button class="btn-imprimir no-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
                 </body>
                 </html>
@@ -1820,6 +1992,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
