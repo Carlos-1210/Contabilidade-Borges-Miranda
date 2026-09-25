@@ -461,6 +461,10 @@
                             <label class="block text-sm font-medium mb-1">Nome do Escritório</label>
                             <input class="input-field" name="nome" placeholder="Borges&Miranda Contabilidade">
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Especialidade (aparece como subtítulo no recibo)</label>
+                            <input class="input-field" name="tagline" placeholder="Assessoria Contábil e Consultoria Financeira">
+                        </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">CNPJ</label>
                             <input class="input-field" name="cnpj" placeholder="00.000.000/0000-00">
@@ -543,6 +547,7 @@ git push -u origin main</pre>
             proximoNumeroRecibo: 1,
             dadosEmpresa: {
                 nome: 'Borges&Miranda Contabilidade',
+                tagline: 'Assessoria Contábil e Consultoria Financeira',
                 cnpj: '',
                 telefone: '',
                 endereco: '',
@@ -891,7 +896,7 @@ git push -u origin main</pre>
                         pagamentos: data.dados?.pagamentos || [],
                         rotinas: data.dados?.rotinas || [],
                         proximoNumeroRecibo: data.dados?.proximoNumeroRecibo || 1,
-                        dadosEmpresa: data.dados?.dadosEmpresa || appData.dadosEmpresa
+                        dadosEmpresa: { tagline: 'Assessoria Contábil e Consultoria Financeira', ...appData.dadosEmpresa, ...(data.dados?.dadosEmpresa || {}) }
                     };
                 }
 
@@ -933,6 +938,7 @@ git push -u origin main</pre>
             if (!form) return;
             const d = appData.dadosEmpresa || {};
             form.querySelector('[name="nome"]').value = d.nome || '';
+            form.querySelector('[name="tagline"]').value = d.tagline || '';
             form.querySelector('[name="cnpj"]').value = d.cnpj || '';
             form.querySelector('[name="telefone"]').value = d.telefone || '';
             form.querySelector('[name="endereco"]').value = d.endereco || '';
@@ -945,6 +951,7 @@ git push -u origin main</pre>
             const fd = new FormData(e.target);
             appData.dadosEmpresa = {
                 nome: (fd.get('nome') || '').trim() || 'Borges&Miranda Contabilidade',
+                tagline: (fd.get('tagline') || '').trim() || 'Assessoria Contábil e Consultoria Financeira',
                 cnpj: (fd.get('cnpj') || '').trim(),
                 telefone: (fd.get('telefone') || '').trim(),
                 endereco: (fd.get('endereco') || '').trim(),
@@ -995,7 +1002,7 @@ git push -u origin main</pre>
                         pagamentos: Array.isArray(dados.pagamentos) ? dados.pagamentos : [],
                         rotinas: Array.isArray(dados.rotinas) ? dados.rotinas : [],
                         proximoNumeroRecibo: Number(dados.proximoNumeroRecibo) || 1,
-                        dadosEmpresa: dados.dadosEmpresa && typeof dados.dadosEmpresa === 'object' ? dados.dadosEmpresa : appData.dadosEmpresa
+                        dadosEmpresa: { tagline: 'Assessoria Contábil e Consultoria Financeira', ...appData.dadosEmpresa, ...(dados.dadosEmpresa && typeof dados.dadosEmpresa === 'object' ? dados.dadosEmpresa : {}) }
                     };
                     preencherFormDadosEmpresa();
                     salvar();
@@ -1141,6 +1148,15 @@ git push -u origin main</pre>
             if (!mesRef) return '--';
             const [ano, mes] = mesRef.split('-');
             const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const idx = parseInt(mes, 10) - 1;
+            return nomes[idx] ? `${nomes[idx]}/${ano}` : mesRef;
+        }
+
+        // Mês por extenso em minúsculo, usado no texto formal do recibo (ex: "agosto/2026")
+        function formatarMesReferenciaExtenso(mesRef) {
+            if (!mesRef) return '';
+            const [ano, mes] = mesRef.split('-');
+            const nomes = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
             const idx = parseInt(mes, 10) - 1;
             return nomes[idx] ? `${nomes[idx]}/${ano}` : mesRef;
         }
@@ -1532,36 +1548,43 @@ git push -u origin main</pre>
                 .filter(Boolean).join(' &middot; ');
 
             function montarCorpoRecibo(compacto) {
+                const nomeEmpresaMaiusculo = (empresa.nome || 'BORGES & MIRANDA CONTABILIDADE').toUpperCase();
+                const nomeClienteMaiusculo = (r.cliente_nome || '').toUpperCase();
+                const servicoTexto = escapeHTML(r.descricao) || 'assessoria contábil e consultoria financeira';
+                const tituloRecibo = r.descricao
+                    ? `RECIBO DE PAGAMENTO DE ${escapeHTML(r.descricao).toUpperCase()}`
+                    : 'RECIBO DE PAGAMENTO DE HONORÁRIOS CONTÁBEIS';
+                const competenciaExtenso = formatarMesReferenciaExtenso(r.mes_referencia);
+
                 return `
-                    <div class="cabecalho">
-                        <div class="marca">
-                            <h1>${escapeHTML(empresa.nome) || 'Borges&amp;Miranda'}</h1>
-                            <p>Contabilidade</p>
-                            ${!compacto && infoEmpresa ? `<p class="info-empresa">${infoEmpresa}</p>` : ''}
-                        </div>
-                        <div class="numero-box">
-                            <p class="titulo">${compacto ? 'Canhoto — Recibo' : 'Recibo'} Nº</p>
-                            <p class="numero">${r.numero_recibo}</p>
-                            <p class="data-emissao">Emitido em ${hojeFormatado}</p>
-                            <span class="selo" style="border-color:${corSelo}; color:${corSelo}">${statusSelo}</span>
-                        </div>
+                    <div class="cabecalho-marca">
+                        <h1>${escapeHTML(empresa.nome) || 'Borges&amp;Miranda'}</h1>
+                        ${empresa.tagline ? `<p class="tagline">${escapeHTML(empresa.tagline)}</p>` : ''}
+                        ${!compacto && infoEmpresa ? `<p class="info-empresa">${infoEmpresa}</p>` : ''}
+                    </div>
+
+                    <p class="titulo-recibo">${compacto ? 'CANHOTO — ' : ''}${tituloRecibo}</p>
+
+                    <div class="linha-numero">
+                        <span>Recibo Nº <strong>${r.numero_recibo}</strong></span>
+                        <span>Emitido em ${hojeFormatado}</span>
+                        <span class="selo" style="border-color:${corSelo}; color:${corSelo}">${statusSelo}</span>
                     </div>
 
                     ${compacto ? `
                     <table class="detalhes compacto">
                         <tr><td>Recebido de</td><td>${escapeHTML(r.cliente_nome)}</td></tr>
-                        <tr><td>Referente a</td><td>${escapeHTML(r.descricao) || 'Serviços prestados'}</td></tr>
                         <tr><td>Valor</td><td class="valor-inline">${formatarMoeda(r.valor)}</td></tr>
+                        <tr><td>Competência</td><td>${competenciaExtenso || '--'}</td></tr>
                         <tr><td>Data</td><td>${dataFormatada}</td></tr>
                     </table>
                     ` : `
                     <div class="corpo">
                         <p>
-                            Recebemos de <span class="destaque">${escapeHTML(r.cliente_nome)}</span>${cliente && cliente.cnpj ? `, CNPJ <span class="destaque">${escapeHTML(cliente.cnpj)}</span>,` : ','}
-                            a importância de <span class="destaque">${formatarMoeda(r.valor)}</span> (${valorExtenso}),
-                            referente a <span class="destaque">${escapeHTML(r.descricao) || 'serviços prestados'}</span>${r.mes_referencia ? `, competência de <span class="destaque">${escapeHTML(formatarMesReferencia(r.mes_referencia))}</span>` : ''}.
+                            Recebemos de <span class="destaque">${nomeClienteMaiusculo}</span>${cliente && cliente.cnpj ? `, inscrita no CNPJ sob o nº <span class="destaque">${escapeHTML(cliente.cnpj)}</span>,` : ','}
+                            a importância de <span class="destaque">${formatarMoeda(r.valor)}</span> (${valorExtenso.charAt(0).toLowerCase() + valorExtenso.slice(1)}), correspondente aos honorários relativos aos serviços de ${servicoTexto}${competenciaExtenso ? `, referentes à competência de <span class="destaque">${competenciaExtenso}</span>` : ''}.
                         </p>
-                        <p>Para maior clareza, firmamos o presente recibo, dando plena e geral quitação referente ao valor acima mencionado, não restando nada mais a reclamar a este título.</p>
+                        <p>O presente recibo comprova o recebimento do valor acima especificado, dando quitação exclusivamente quanto aos serviços e à competência nele indicados.</p>
                     </div>
 
                     <div class="valor-caixa">
@@ -1569,18 +1592,11 @@ git push -u origin main</pre>
                         <div class="valor-por-extenso">${valorExtenso}</div>
                     </div>
 
-                    <table class="detalhes">
-                        <tr><td>Mês de referência</td><td>${escapeHTML(formatarMesReferencia(r.mes_referencia))}</td></tr>
-                        <tr><td>Data do recebimento</td><td>${dataFormatada}</td></tr>
-                        <tr><td>Vencimento original</td><td>${vencimentoFormatado}</td></tr>
-                        <tr><td>Forma</td><td style="text-transform:capitalize">${escapeHTML(r.status)}</td></tr>
-                    </table>
-
                     <div class="local-data">${localData}</div>
 
-                    <div class="assinaturas">
-                        <div class="linha-assinatura">${escapeHTML(empresa.nome) || 'Borges&amp;Miranda Contabilidade'}<br><span>Emitente</span></div>
-                        <div class="linha-assinatura">${escapeHTML(r.cliente_nome)}<br><span>Recebedor</span></div>
+                    <div class="assinatura-unica">
+                        <p class="nome-empresa-assinatura">${nomeEmpresaMaiusculo}</p>
+                        ${empresa.tagline ? `<p class="tagline-assinatura">${escapeHTML(empresa.tagline)}</p>` : ''}
                     </div>
                     `}
                 `;
@@ -1631,53 +1647,51 @@ git push -u origin main</pre>
                             flex: 1;
                             border-top: 1px dashed #bbb;
                         }
-                        .cabecalho {
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: flex-start;
+                        .cabecalho-marca {
+                            text-align: center;
                             border-bottom: 3px solid #0A2342;
-                            padding-bottom: 16px;
-                            margin-bottom: 24px;
+                            padding-bottom: 14px;
+                            margin-bottom: 14px;
                         }
-                        .marca h1 {
+                        .cabecalho-marca h1 {
                             font-family: Arial, Helvetica, sans-serif;
                             font-size: 19px;
+                            font-weight: bold;
                             color: #0A2342;
                             margin: 0 0 3px;
-                            letter-spacing: 0.3px;
+                            letter-spacing: 0.5px;
+                            text-transform: uppercase;
                         }
-                        .marca p {
+                        .cabecalho-marca .tagline {
                             font-family: Arial, Helvetica, sans-serif;
-                            font-size: 11px;
-                            color: #777;
+                            font-size: 11.5px;
+                            color: #555;
                             margin: 0;
                         }
-                        .marca .info-empresa {
+                        .cabecalho-marca .info-empresa {
                             margin-top: 6px;
                             font-size: 10px;
                             color: #999;
-                        }
-                        .numero-box {
-                            text-align: right;
                             font-family: Arial, Helvetica, sans-serif;
                         }
-                        .numero-box .titulo {
-                            font-size: 12px;
-                            color: #777;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                            margin: 0 0 2px;
-                        }
-                        .numero-box .numero {
-                            font-size: 22px;
+                        .titulo-recibo {
+                            text-align: center;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 13px;
                             font-weight: bold;
-                            color: #0A2342;
-                            margin: 0;
+                            letter-spacing: 0.5px;
+                            color: #1a1a1a;
+                            margin: 0 0 14px;
                         }
-                        .numero-box .data-emissao {
+                        .linha-numero {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            gap: 16px;
+                            font-family: Arial, Helvetica, sans-serif;
                             font-size: 11px;
                             color: #777;
-                            margin: 3px 0 8px;
+                            margin-bottom: 20px;
                         }
                         .selo {
                             display: inline-block;
@@ -1745,34 +1759,32 @@ git push -u origin main</pre>
                             font-weight: bold;
                         }
                         .local-data {
-                            margin-top: 28px;
+                            margin-top: 20px;
                             font-family: Arial, Helvetica, sans-serif;
                             font-size: 13px;
                             color: #555;
                             text-align: right;
                         }
-                        .assinaturas {
-                            display: flex;
-                            justify-content: space-between;
-                            gap: 24px;
-                            margin-top: 56px;
+                        .assinatura-unica {
+                            text-align: center;
+                            margin: 50px auto 0;
+                            padding-top: 10px;
+                            border-top: 1px solid #999;
+                            width: 60%;
                             font-family: Arial, Helvetica, sans-serif;
                         }
-                        .linha-assinatura {
-                            width: 46%;
-                            text-align: center;
-                            border-top: 1px solid #999;
-                            padding-top: 8px;
-                            font-size: 12px;
-                            color: #333;
-                            font-weight: 600;
+                        .nome-empresa-assinatura {
+                            font-weight: bold;
+                            font-size: 13px;
+                            color: #1a1a1a;
+                            margin: 0;
+                            text-transform: uppercase;
+                            letter-spacing: 0.3px;
                         }
-                        .linha-assinatura span {
-                            display: block;
-                            font-weight: 400;
-                            color: #999;
+                        .tagline-assinatura {
                             font-size: 11px;
-                            margin-top: 2px;
+                            color: #777;
+                            margin: 2px 0 0;
                         }
                         .rodape {
                             margin-top: 32px;
@@ -1814,8 +1826,10 @@ git push -u origin main</pre>
                             /* Compacta os espaçamentos verticais só na impressão,
                                para o recibo principal e o canhoto caberem juntos
                                numa única folha A4. */
-                            .cabecalho { padding-bottom: 8px; margin-bottom: 12px; }
-                            .marca h1 { font-size: 16px; }
+                            .cabecalho-marca { padding-bottom: 8px; margin-bottom: 8px; }
+                            .cabecalho-marca h1 { font-size: 15px; }
+                            .titulo-recibo { font-size: 11.5px; margin-bottom: 8px; }
+                            .linha-numero { margin-bottom: 10px; font-size: 10px; }
                             .corpo p { font-size: 12.5px; line-height: 1.5; margin: 0 0 8px; }
                             .valor-caixa { padding: 8px 14px; margin: 10px 0; }
                             .valor-caixa .valor-numero { font-size: 20px; }
@@ -1823,8 +1837,9 @@ git push -u origin main</pre>
                             table.detalhes { margin: 10px 0; font-size: 11.5px; }
                             table.detalhes td { padding: 4px; }
                             .local-data { margin-top: 12px; font-size: 11px; }
-                            .assinaturas { margin-top: 24px; }
-                            .linha-assinatura { padding-top: 6px; font-size: 11px; }
+                            .assinatura-unica { margin-top: 24px; }
+                            .nome-empresa-assinatura { font-size: 11.5px; }
+                            .tagline-assinatura { font-size: 10px; }
                             .rodape { margin-top: 14px; padding-top: 8px; font-size: 9px; }
                         }
                     </style>
