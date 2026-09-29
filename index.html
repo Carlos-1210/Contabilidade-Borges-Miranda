@@ -234,6 +234,7 @@
                     <li><a href="#dashboard" class="sidebar-link active"><i class="fa fa-tachometer w-5 text-center"></i> Dashboard</a></li>
                     <li><a href="#clientes" class="sidebar-link"><i class="fa fa-users w-5 text-center"></i> Clientes</a></li>
                     <li><a href="#recebimentos" class="sidebar-link"><i class="fa fa-arrow-down w-5 text-center"></i> Recebimentos</a></li>
+                    <li><a href="#historico" class="sidebar-link"><i class="fa fa-archive w-5 text-center"></i> Histórico</a></li>
                     <li><a href="#pagamentos" class="sidebar-link"><i class="fa fa-arrow-up w-5 text-center"></i> Pagamentos</a></li>
                     <li><a href="#rotinas" class="sidebar-link"><i class="fa fa-calendar-check-o w-5 text-center"></i> Rotinas</a></li>
                     <li><a href="#configuracao" class="sidebar-link"><i class="fa fa-cog w-5 text-center"></i> Configuração</a></li>
@@ -377,6 +378,7 @@
                         <i class="fa fa-plus mr-1"></i> Lançar
                     </button>
                 </div>
+                <p class="text-xs text-gray-500 mb-3">Mostra apenas pendentes e vencidos, em ordem alfabética. Recebimentos já quitados vão automaticamente para o <a href="#historico" class="text-secondary underline" onclick="document.querySelector('a[href=&quot;#historico&quot;].sidebar-link').click()">Histórico</a>.</p>
                 <div class="bg-white rounded-xl card-shadow overflow-hidden overflow-x-auto">
                     <table class="w-full">
                         <thead>
@@ -393,6 +395,30 @@
                         </thead>
                         <tbody id="lista-recebimentos">
                             <tr><td colspan="8" class="p-4 text-center text-gray-500">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="historico" class="mb-12 hidden">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="font-heading font-bold text-xl text-primary">Histórico de Recebimentos</h2>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">Recebimentos já quitados, arquivados aqui automaticamente, em ordem alfabética.</p>
+                <div class="bg-white rounded-xl card-shadow overflow-hidden overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="table-cell text-left font-semibold">Mês Ref.</th>
+                                <th class="table-cell text-left font-semibold">Data</th>
+                                <th class="table-cell text-left font-semibold">Cliente</th>
+                                <th class="table-cell text-left font-semibold">Descrição</th>
+                                <th class="table-cell text-left font-semibold">Valor</th>
+                                <th class="table-cell text-left font-semibold">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-historico">
+                            <tr><td colspan="6" class="p-4 text-center text-gray-500">Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -470,8 +496,16 @@
                             <input class="input-field" name="cnpj" placeholder="00.000.000/0000-00">
                         </div>
                         <div>
+                            <label class="block text-sm font-medium mb-1">CPF</label>
+                            <input class="input-field" name="cpf" placeholder="000.000.000-00">
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium mb-1">Telefone</label>
-                            <input class="input-field" name="telefone" placeholder="(00) 00000-0000">
+                            <input class="input-field" name="telefone" placeholder="(00) 0000-0000">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Telefone 2 / WhatsApp</label>
+                            <input class="input-field" name="whatsapp" placeholder="(00) 00000-0000">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium mb-1">Endereço</label>
@@ -549,7 +583,9 @@ git push -u origin main</pre>
                 nome: 'Borges&Miranda Contabilidade',
                 tagline: 'Assessoria Contábil e Consultoria Financeira',
                 cnpj: '',
+                cpf: '',
                 telefone: '',
+                whatsapp: '',
                 endereco: '',
                 cidade: '',
                 email: ''
@@ -940,7 +976,9 @@ git push -u origin main</pre>
             form.querySelector('[name="nome"]').value = d.nome || '';
             form.querySelector('[name="tagline"]').value = d.tagline || '';
             form.querySelector('[name="cnpj"]').value = d.cnpj || '';
+            form.querySelector('[name="cpf"]').value = d.cpf || '';
             form.querySelector('[name="telefone"]').value = d.telefone || '';
+            form.querySelector('[name="whatsapp"]').value = d.whatsapp || '';
             form.querySelector('[name="endereco"]').value = d.endereco || '';
             form.querySelector('[name="cidade"]').value = d.cidade || '';
             form.querySelector('[name="email"]').value = d.email || '';
@@ -953,7 +991,9 @@ git push -u origin main</pre>
                 nome: (fd.get('nome') || '').trim() || 'Borges&Miranda Contabilidade',
                 tagline: (fd.get('tagline') || '').trim() || 'Assessoria Contábil e Consultoria Financeira',
                 cnpj: (fd.get('cnpj') || '').trim(),
+                cpf: (fd.get('cpf') || '').trim(),
                 telefone: (fd.get('telefone') || '').trim(),
+                whatsapp: (fd.get('whatsapp') || '').trim(),
                 endereco: (fd.get('endereco') || '').trim(),
                 cidade: (fd.get('cidade') || '').trim(),
                 email: (fd.get('email') || '').trim()
@@ -1043,6 +1083,7 @@ git push -u origin main</pre>
             atualizarDashboard();
             atualizarListaClientes();
             atualizarListaRecebimentos();
+            atualizarListaHistorico();
             atualizarListaPagamentos();
             atualizarListaRotinas();
             preencherFormDadosEmpresa();
@@ -1152,6 +1193,18 @@ git push -u origin main</pre>
             return nomes[idx] ? `${nomes[idx]}/${ano}` : mesRef;
         }
 
+        // Vencimento padrão: dia 10 do mês SEGUINTE à competência.
+        // Ex: competência 2026-09 (setembro) -> 2026-10-10. Dezembro vira janeiro do ano seguinte.
+        function calcularVencimentoPadrao(mesRef) {
+            if (!mesRef) return '';
+            const partes = mesRef.split('-').map(Number);
+            let ano = partes[0];
+            let mes = partes[1] + 1;
+            if (!ano || !partes[1]) return '';
+            if (mes > 12) { mes = 1; ano += 1; }
+            return `${ano}-${String(mes).padStart(2, '0')}-10`;
+        }
+
         // Mês por extenso em minúsculo, usado no texto formal do recibo (ex: "agosto/2026")
         function formatarMesReferenciaExtenso(mesRef) {
             if (!mesRef) return '';
@@ -1161,8 +1214,25 @@ git push -u origin main</pre>
             return nomes[idx] ? `${nomes[idx]}/${ano}` : mesRef;
         }
 
+        // Ordem alfabética por cliente (ignora acentos/maiúsculas) e, em empate, por mês de referência
+        function ordenarPorCliente(lista) {
+            return [...lista].sort((a, b) => {
+                const cmp = (a.cliente_nome || '').localeCompare(b.cliente_nome || '', 'pt-BR', { sensitivity: 'base' });
+                return cmp !== 0 ? cmp : (a.mes_referencia || '').localeCompare(b.mes_referencia || '');
+            });
+        }
+
+        function botoesEnvioRecibo(id) {
+            return `
+                <button class="text-gray-500 hover:text-secondary ml-2" onclick="gerarReciboRecebimento('${id}')" title="Gerar recibo em PDF"><i class="fa fa-file-pdf-o"></i></button>
+                <button class="text-gray-500 hover:text-primary ml-2" onclick="enviarReciboEmail('${id}')" title="Enviar recibo por e-mail"><i class="fa fa-envelope-o"></i></button>
+                <button class="ml-2" style="color:#25D366" onclick="enviarReciboWhatsApp('${id}')" title="Enviar recibo por WhatsApp"><i class="fa fa-whatsapp"></i></button>
+            `;
+        }
+
         function atualizarListaRecebimentos() {
-            const lista = appData.recebimentos;
+            // Só pendentes e vencidos ficam na lista principal; os recebidos vão pro Histórico.
+            const lista = ordenarPorCliente(appData.recebimentos.filter(r => r.status !== 'recebido'));
             const tbody = document.getElementById('lista-recebimentos');
             tbody.innerHTML = lista.length ? lista.map(r => `
                 <tr class="border-b border-gray-100 hover:bg-gray-50">
@@ -1176,16 +1246,35 @@ git push -u origin main</pre>
                     <td class="table-cell">${formatarMoeda(r.valor)}</td>
                     <td class="table-cell">${escapeHTML(r.vencimento) || '--'}</td>
                     <td class="table-cell">
-                        <span class="${r.status === 'recebido' ? 'text-success' : r.status === 'vencido' ? 'text-danger' : 'text-warning'}">${escapeHTML(r.status)}</span>
+                        <span class="${r.status === 'vencido' ? 'text-danger' : 'text-warning'}">${escapeHTML(r.status)}</span>
                     </td>
                     <td class="table-cell whitespace-nowrap">
-                        ${r.status !== 'recebido' ? `<button class="btn btn-sm btn-success" onclick="marcarStatus('recebimentos', '${r.id}', 'recebido')">Receber</button>` : ''}
+                        <button class="btn btn-sm btn-success" onclick="marcarStatus('recebimentos', '${r.id}', 'recebido')">Receber</button>
                         <button class="text-gray-500 hover:text-primary ml-2" onclick="editarRecebimento('${r.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
-                        <button class="text-gray-500 hover:text-secondary ml-2" onclick="gerarReciboRecebimento('${r.id}')" title="Gerar recibo em PDF"><i class="fa fa-file-pdf-o"></i></button>
+                        ${botoesEnvioRecibo(r.id)}
                         <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('recebimentos', '${r.id}')" title="Excluir"><i class="fa fa-trash"></i></button>
                     </td>
                 </tr>
-            `).join('') : '<tr><td colspan="8" class="p-4 text-center text-gray-500">Nenhum lançamento</td></tr>';
+            `).join('') : '<tr><td colspan="8" class="p-4 text-center text-gray-500">Nenhum recebimento pendente ou vencido</td></tr>';
+        }
+
+        function atualizarListaHistorico() {
+            const lista = ordenarPorCliente(appData.recebimentos.filter(r => r.status === 'recebido'));
+            const tbody = document.getElementById('lista-historico');
+            tbody.innerHTML = lista.length ? lista.map(r => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="table-cell">${escapeHTML(formatarMesReferencia(r.mes_referencia))}</td>
+                    <td class="table-cell">${escapeHTML(r.data) || '--'}</td>
+                    <td class="table-cell font-medium">${escapeHTML(r.cliente_nome)}</td>
+                    <td class="table-cell">${escapeHTML(r.descricao)}</td>
+                    <td class="table-cell text-success font-medium">${formatarMoeda(r.valor)}</td>
+                    <td class="table-cell whitespace-nowrap">
+                        <button class="text-gray-500 hover:text-primary" onclick="editarRecebimento('${r.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
+                        ${botoesEnvioRecibo(r.id)}
+                        <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('recebimentos', '${r.id}')" title="Excluir"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhum recebimento quitado ainda</td></tr>';
         }
 
         function atualizarListaPagamentos() {
@@ -1243,8 +1332,15 @@ git push -u origin main</pre>
             const item = appData[colecao].find(i => i.id === id);
             if (!item) return;
             item.status = novoStatus;
+            // Ao quitar um recebimento, a data do recebimento é preenchida
+            // automaticamente com o dia de hoje (pode ser editada depois).
+            if (colecao === 'recebimentos' && novoStatus === 'recebido' && !item.data) {
+                item.data = new Date().toISOString().slice(0, 10);
+            }
             salvar();
-            mostrarToast('Status atualizado.', 'sucesso');
+            mostrarToast(colecao === 'recebimentos' && novoStatus === 'recebido'
+                ? 'Recebimento quitado e arquivado no Histórico.'
+                : 'Status atualizado.', 'sucesso');
         }
 
         function editarCliente(id) {
@@ -1389,12 +1485,14 @@ git push -u origin main</pre>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm font-medium mb-1">Data</label>
+                            <label class="block text-sm font-medium mb-1">Data do recebimento</label>
                             <input type="date" class="input-field" name="data" value="${editando ? (recebimento.data || '') : ''}">
+                            <p class="text-xs text-gray-400 mt-1">Preenche sozinha ao marcar como recebido.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">Vencimento</label>
-                            <input type="date" class="input-field" name="vencimento" value="${editando ? (recebimento.vencimento || '') : ''}">
+                            <input type="date" class="input-field" name="vencimento" value="${editando ? (recebimento.vencimento || '') : calcularVencimentoPadrao(mesAtualISO)}">
+                            <p class="text-xs text-gray-400 mt-1">Automático: dia 10 do mês seguinte à competência.</p>
                         </div>
                     </div>
                     <div>
@@ -1414,7 +1512,26 @@ git push -u origin main</pre>
 
             const formRecEl = document.getElementById('form-recebimento');
             const campoValorRec = formRecEl.querySelector('[name="valor"]');
+            const campoMesRef = formRecEl.querySelector('[name="mes_referencia"]');
+            const campoVencimento = formRecEl.querySelector('[name="vencimento"]');
+            const campoData = formRecEl.querySelector('[name="data"]');
+            const campoStatus = formRecEl.querySelector('[name="status"]');
             ativarMascaraMoeda(campoValorRec);
+
+            // Ao trocar a competência, o vencimento vai automaticamente para o
+            // dia 10 do mês seguinte (ex: setembro/2026 -> 10/10/2026).
+            // Continua editável manualmente depois, se precisar de outra data.
+            campoMesRef.addEventListener('change', () => {
+                const sugerido = calcularVencimentoPadrao(campoMesRef.value);
+                if (sugerido) campoVencimento.value = sugerido;
+            });
+
+            // Ao marcar como "recebido", sugere a data de hoje (editável).
+            campoStatus.addEventListener('change', () => {
+                if (campoStatus.value === 'recebido' && !campoData.value) {
+                    campoData.value = new Date().toISOString().slice(0, 10);
+                }
+            });
 
             formRecEl.addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -1428,10 +1545,13 @@ git push -u origin main</pre>
                     vencimento: fd.get('vencimento') || null,
                     status: fd.get('status')
                 };
+                if (payload.status === 'recebido' && !payload.data) {
+                    payload.data = new Date().toISOString().slice(0, 10);
+                }
                 if (editando) { Object.assign(recebimento, payload); }
                 else { appData.recebimentos.push({ id: gerarId(), ...payload }); }
                 salvar();
-                mostrarToast('Recebimento salvo com sucesso!', 'sucesso');
+                mostrarToast(payload.status === 'recebido' ? 'Recebimento salvo e arquivado no Histórico!' : 'Recebimento salvo com sucesso!', 'sucesso');
                 fecharModal();
             });
         }
@@ -1510,6 +1630,73 @@ git push -u origin main</pre>
             return texto.charAt(0).toUpperCase() + texto.slice(1);
         }
 
+        // Número sequencial fixo do recibo: gerado uma única vez por recebimento
+        // e reaproveitado em reimpressões e nos envios (e-mail/WhatsApp).
+        function garantirNumeroRecibo(r) {
+            if (!r.numero_recibo) {
+                const numero = appData.proximoNumeroRecibo || 1;
+                r.numero_recibo = String(numero).padStart(6, '0');
+                appData.proximoNumeroRecibo = numero + 1;
+                salvar();
+            }
+            return r.numero_recibo;
+        }
+
+        // Mensagem-resumo do recibo, usada no corpo do e-mail e no texto do WhatsApp.
+        function montarMensagemRecibo(r) {
+            const empresa = appData.dadosEmpresa || {};
+            const cliente = appData.clientes.find(c => c.nome === r.cliente_nome || c.nome_fantasia === r.cliente_nome);
+            const competencia = formatarMesReferenciaExtenso(r.mes_referencia);
+            const dataRec = r.data ? new Date(r.data + 'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+            const nomeEmpresa = (empresa.nome || 'Borges&Miranda Contabilidade');
+            const contato = [empresa.telefone, empresa.whatsapp].filter(Boolean).join(' / ');
+
+            return [
+                `Olá${cliente && cliente.nome_responsavel ? ', ' + cliente.nome_responsavel : ''}! Segue o recibo de pagamento de honorários contábeis.`,
+                ``,
+                `Recibo Nº ${r.numero_recibo}`,
+                `Recebido de: ${(r.cliente_nome || '').toUpperCase()}`,
+                `Valor: ${formatarMoeda(r.valor)} (${numeroPorExtenso(r.valor).toLowerCase()})`,
+                competencia ? `Competência: ${competencia}` : null,
+                `Data do recebimento: ${dataRec}`,
+                ``,
+                `O PDF do recibo segue em anexo.`,
+                ``,
+                `Atenciosamente,`,
+                nomeEmpresa,
+                empresa.tagline || null,
+                contato ? `Contato: ${contato}` : null
+            ].filter(linha => linha !== null).join('\n');
+        }
+
+        // Abre o e-mail já com assunto e texto preenchidos. O navegador não permite
+        // anexar arquivo automaticamente: por isso o PDF do recibo também é aberto
+        // para o usuário salvar e anexar no e-mail.
+        function enviarReciboEmail(id) {
+            const r = appData.recebimentos.find(item => item.id === id);
+            if (!r) return;
+            garantirNumeroRecibo(r);
+            const empresa = appData.dadosEmpresa || {};
+            const assunto = `Recibo Nº ${r.numero_recibo} - ${empresa.nome || 'Borges&Miranda Contabilidade'}`;
+            const corpo = montarMensagemRecibo(r);
+            gerarReciboRecebimento(id);
+            window.location.href = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+        }
+
+        // Abre o WhatsApp (app ou WhatsApp Web) com a mensagem pronta; a pessoa
+        // escolhe o contato. O PDF é aberto em outra janela para salvar e anexar.
+        function enviarReciboWhatsApp(id) {
+            const r = appData.recebimentos.find(item => item.id === id);
+            if (!r) return;
+            garantirNumeroRecibo(r);
+            const corpo = montarMensagemRecibo(r);
+            gerarReciboRecebimento(id);
+            const janelaWhats = window.open(`https://wa.me/?text=${encodeURIComponent(corpo)}`, '_blank');
+            if (!janelaWhats) {
+                mostrarToast('O navegador bloqueou a abertura do WhatsApp. Permita pop-ups para este site e tente de novo.', 'aviso');
+            }
+        }
+
         // Gera um recibo profissional (numerado, com valor por extenso) e
         // aciona a impressão do navegador — o usuário escolhe "Salvar como
         // PDF" na janela de impressão, sem precisar de nenhuma biblioteca externa.
@@ -1517,14 +1704,7 @@ git push -u origin main</pre>
             const r = appData.recebimentos.find(item => item.id === id);
             if (!r) return;
 
-            // Número sequencial fixo: gerado uma única vez e reaproveitado
-            // em reimpressões do mesmo recibo.
-            if (!r.numero_recibo) {
-                const numero = appData.proximoNumeroRecibo || 1;
-                r.numero_recibo = String(numero).padStart(6, '0');
-                appData.proximoNumeroRecibo = numero + 1;
-                salvar();
-            }
+            garantirNumeroRecibo(r);
 
             const janela = window.open('', '_blank', 'width=850,height=1000');
             if (!janela) {
@@ -1544,8 +1724,13 @@ git push -u origin main</pre>
             const corSelo = r.status === 'recebido' ? '#2E7D32' : r.status === 'vencido' ? '#C62828' : '#F57C00';
 
             // Bloco de identificação do escritório, reaproveitado no corpo e no canhoto
-            const infoEmpresa = [empresa.cnpj ? `CNPJ ${escapeHTML(empresa.cnpj)}` : null, escapeHTML(empresa.endereco) || null, empresa.telefone ? `Tel: ${escapeHTML(empresa.telefone)}` : null]
-                .filter(Boolean).join(' &middot; ');
+            const infoEmpresa = [
+                empresa.cnpj ? `CNPJ ${escapeHTML(empresa.cnpj)}` : null,
+                empresa.cpf ? `CPF ${escapeHTML(empresa.cpf)}` : null,
+                escapeHTML(empresa.endereco) || null,
+                empresa.telefone ? `Tel: ${escapeHTML(empresa.telefone)}` : null,
+                empresa.whatsapp ? `WhatsApp: ${escapeHTML(empresa.whatsapp)}` : null
+            ].filter(Boolean).join(' &middot; ');
 
             function montarCorpoRecibo(compacto) {
                 const nomeEmpresaMaiusculo = (empresa.nome || 'BORGES & MIRANDA CONTABILIDADE').toUpperCase();
@@ -2032,6 +2217,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
