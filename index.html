@@ -520,6 +520,11 @@
                             <input class="input-field" name="email" placeholder="contato@escritorio.com.br">
                         </div>
                         <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Dados para Pagamento (PIX / Bancos)</label>
+                            <textarea class="input-field" name="dadosPagamento" rows="4" placeholder="🔑 Chave PIX CPF: 000.000.000-00&#10;🔑 Chave PIX Telefone: (00) 00000-0000&#10;🏦 Banco: Inter&#10;🏦 Banco: Nubank"></textarea>
+                            <p class="text-xs text-gray-400 mt-1">Esse texto entra automaticamente no lembrete de vencimento enviado aos clientes.</p>
+                        </div>
+                        <div class="md:col-span-2">
                             <button type="submit" class="btn btn-primary">Salvar Dados do Escritório</button>
                         </div>
                     </form>
@@ -588,7 +593,8 @@ git push -u origin main</pre>
                 whatsapp: '',
                 endereco: '',
                 cidade: '',
-                email: ''
+                email: '',
+                dadosPagamento: ''
             }
         };
 
@@ -979,6 +985,7 @@ git push -u origin main</pre>
             form.querySelector('[name="cpf"]').value = d.cpf || '';
             form.querySelector('[name="telefone"]').value = d.telefone || '';
             form.querySelector('[name="whatsapp"]').value = d.whatsapp || '';
+            form.querySelector('[name="dadosPagamento"]').value = d.dadosPagamento || '';
             form.querySelector('[name="endereco"]').value = d.endereco || '';
             form.querySelector('[name="cidade"]').value = d.cidade || '';
             form.querySelector('[name="email"]').value = d.email || '';
@@ -994,6 +1001,7 @@ git push -u origin main</pre>
                 cpf: (fd.get('cpf') || '').trim(),
                 telefone: (fd.get('telefone') || '').trim(),
                 whatsapp: (fd.get('whatsapp') || '').trim(),
+                dadosPagamento: (fd.get('dadosPagamento') || '').trim(),
                 endereco: (fd.get('endereco') || '').trim(),
                 cidade: (fd.get('cidade') || '').trim(),
                 email: (fd.get('email') || '').trim()
@@ -1251,6 +1259,7 @@ git push -u origin main</pre>
                     <td class="table-cell whitespace-nowrap">
                         <button class="btn btn-sm btn-success" onclick="marcarStatus('recebimentos', '${r.id}', 'recebido')">Receber</button>
                         <button class="text-gray-500 hover:text-primary ml-2" onclick="editarRecebimento('${r.id}')" title="Editar"><i class="fa fa-pencil"></i></button>
+                        <button class="ml-2" style="color:#F57C00" onclick="enviarLembreteWhatsApp('${r.id}')" title="Enviar lembrete de vencimento por WhatsApp"><i class="fa fa-bell"></i></button>
                         ${botoesEnvioRecibo(r.id)}
                         <button class="text-gray-500 hover:text-danger ml-2" onclick="excluirItem('recebimentos', '${r.id}')" title="Excluir"><i class="fa fa-trash"></i></button>
                     </td>
@@ -1479,9 +1488,20 @@ git push -u origin main</pre>
                         <label class="block text-sm font-medium mb-1">Descrição</label>
                         <input class="input-field" name="descricao" value="${editando ? escapeHTML(recebimento.descricao) : ''}">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Valor (R$)</label>
-                        <input required inputmode="numeric" class="input-field" name="valor" placeholder="0,00" value="${editando ? Number(recebimento.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Valor do Honorário (R$)</label>
+                            <input required inputmode="numeric" class="input-field" name="valor_honorario" placeholder="0,00" value="${editando ? Number((recebimento.valor_honorario ?? recebimento.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}">
+                            <p class="text-xs text-gray-400 mt-1">Preenche sozinho com o valor mensal do cadastro do cliente.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Serviço Extra (R$) <span class="text-gray-400 font-normal">opcional</span></label>
+                            <input inputmode="numeric" class="input-field" name="valor_extra" placeholder="0,00" value="${editando && recebimento.valor_extra ? Number(recebimento.valor_extra).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}">
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg px-4 py-3 flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Valor Total</span>
+                        <span id="recebimento-valor-total" class="text-lg font-bold text-success">R$ 0,00</span>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -1511,12 +1531,37 @@ git push -u origin main</pre>
             `);
 
             const formRecEl = document.getElementById('form-recebimento');
-            const campoValorRec = formRecEl.querySelector('[name="valor"]');
+            const campoCliente = formRecEl.querySelector('[name="cliente_nome"]');
+            const campoHonorario = formRecEl.querySelector('[name="valor_honorario"]');
+            const campoExtra = formRecEl.querySelector('[name="valor_extra"]');
             const campoMesRef = formRecEl.querySelector('[name="mes_referencia"]');
             const campoVencimento = formRecEl.querySelector('[name="vencimento"]');
             const campoData = formRecEl.querySelector('[name="data"]');
             const campoStatus = formRecEl.querySelector('[name="status"]');
-            ativarMascaraMoeda(campoValorRec);
+            const displayTotal = document.getElementById('recebimento-valor-total');
+            ativarMascaraMoeda(campoHonorario);
+            ativarMascaraMoeda(campoExtra);
+
+            function recalcularTotal() {
+                const honorario = valorMoedaParaNumero(campoHonorario);
+                const extra = valorMoedaParaNumero(campoExtra);
+                displayTotal.textContent = formatarMoeda(honorario + extra);
+            }
+            campoHonorario.addEventListener('input', recalcularTotal);
+            campoExtra.addEventListener('input', recalcularTotal);
+            recalcularTotal();
+
+            // Ao escolher/digitar um cliente já cadastrado, puxa automaticamente
+            // o valor do honorário mensal definido no cadastro dele.
+            campoCliente.addEventListener('input', () => {
+                if (editando) return; // não sobrescreve valores já lançados ao editar
+                const cliente = appData.clientes.find(c => c.nome === campoCliente.value || c.nome_fantasia === campoCliente.value);
+                if (cliente) {
+                    campoHonorario.value = Number(cliente.valor_mensal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    campoHonorario.dataset.valorNumerico = Number(cliente.valor_mensal || 0);
+                    recalcularTotal();
+                }
+            });
 
             // Ao trocar a competência, o vencimento vai automaticamente para o
             // dia 10 do mês seguinte (ex: setembro/2026 -> 10/10/2026).
@@ -1536,11 +1581,15 @@ git push -u origin main</pre>
             formRecEl.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
+                const valorHonorario = valorMoedaParaNumero(campoHonorario);
+                const valorExtra = valorMoedaParaNumero(campoExtra);
                 const payload = {
                     cliente_nome: fd.get('cliente_nome').trim(),
                     mes_referencia: fd.get('mes_referencia') || null,
                     descricao: fd.get('descricao').trim(),
-                    valor: valorMoedaParaNumero(campoValorRec),
+                    valor_honorario: valorHonorario,
+                    valor_extra: valorExtra,
+                    valor: valorHonorario + valorExtra,
                     data: fd.get('data') || null,
                     vencimento: fd.get('vencimento') || null,
                     status: fd.get('status')
@@ -1695,6 +1744,52 @@ git push -u origin main</pre>
             if (!janelaWhats) {
                 mostrarToast('O navegador bloqueou a abertura do WhatsApp. Permita pop-ups para este site e tente de novo.', 'aviso');
             }
+        }
+
+        // Monta a mensagem de LEMBRETE DE VENCIMENTO (ainda não pago), puxando
+        // mês de referência, valor total e data de vencimento direto do lançamento.
+        function montarMensagemLembrete(r) {
+            const empresa = appData.dadosEmpresa || {};
+            const competencia = formatarMesReferenciaExtenso(r.mes_referencia) || '--';
+            const vencimentoFormatado = r.vencimento ? new Date(r.vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
+            const nomeEmpresa = empresa.nome || 'Borges & Miranda Contabilidade';
+
+            return [
+                `Prezado(a) ${r.cliente_nome},`,
+                ``,
+                `Esperamos que estejam bem.`,
+                ``,
+                `Estamos entrando em contato para lembrar sobre o vencimento do honorário referente à competência de ${competencia}, com vencimento em ${vencimentoFormatado}, referente aos nossos serviços prestados.`,
+                ``,
+                `Segue abaixo o detalhamento do valor:`,
+                ``,
+                `Total: ${formatarMoeda(r.valor)}`,
+                empresa.dadosPagamento || null,
+                ``,
+                `Agradecemos a atenção e permanecemos à disposição para quaisquer esclarecimentos.`,
+                ``,
+                `Atenciosamente,`,
+                nomeEmpresa
+            ].filter(linha => linha !== null).join('\n');
+        }
+
+        function enviarLembreteWhatsApp(id) {
+            const r = appData.recebimentos.find(item => item.id === id);
+            if (!r) return;
+            const corpo = montarMensagemLembrete(r);
+            const janelaWhats = window.open(`https://wa.me/?text=${encodeURIComponent(corpo)}`, '_blank');
+            if (!janelaWhats) {
+                mostrarToast('O navegador bloqueou a abertura do WhatsApp. Permita pop-ups para este site e tente de novo.', 'aviso');
+            }
+        }
+
+        function enviarLembreteEmail(id) {
+            const r = appData.recebimentos.find(item => item.id === id);
+            if (!r) return;
+            const empresa = appData.dadosEmpresa || {};
+            const assunto = `Lembrete de vencimento – Honorário`;
+            const corpo = montarMensagemLembrete(r);
+            window.location.href = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
         }
 
         // Gera um recibo profissional (numerado, com valor por extenso) e
@@ -2217,6 +2312,7 @@ git push -u origin main</pre>
     </script>
 </body>
 </html>
+
 
 
 
